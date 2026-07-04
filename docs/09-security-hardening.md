@@ -77,7 +77,7 @@ Recommended System Console settings:
 
 - `Authentication > Signup > Enable account creation`: `false`
 - `Authentication > Email > Enable account creation with email`: `false`
-- `Users and Teams > Teams > Enable team creation`: `false`
+- `Users and Teams > Teams > Enable team creation`: use **Advanced Permissions** (`create_team`) if needed; the legacy `EnableTeamCreation` config is deprecated in Mattermost 11
 - `Authentication > Password > Minimum password length`: at least `14`
 - `Authentication > Password > Require at least one lowercase letter`: `true`
 - `Authentication > Password > Require at least one uppercase letter`: `true`
@@ -91,7 +91,7 @@ Equivalent config keys for automation:
 ```text
 MM_TEAMSETTINGS_ENABLEUSERCREATION=false
 MM_EMAILSETTINGS_ENABLESIGNUPWITHEMAIL=false
-MM_TEAMSETTINGS_ENABLETEAMCREATION=false
+MM_TEAMSETTINGS_ENABLEOPENSERVER=false
 MM_SERVICESETTINGS_ENABLEMULTIFACTORAUTHENTICATION=true
 MM_SERVICESETTINGS_ENFORCEMULTIFACTORAUTHENTICATION=true
 ```
@@ -164,7 +164,7 @@ journalctl -u mattermost-health.service --no-pager -n 100
 For active alerts, choose one of:
 
 - OCI Notifications alarm on VM metrics or custom log ingestion.
-- `ALERT_WEBHOOK_URL` in `/opt/mattermost/.env` for health and backup script failure notifications.
+- `ALERT_WEBHOOK_URL` in `/opt/mattermost/.env` for health and backup script failure notifications (see [`templates/env.example`](../templates/env.example)).
 - Manual review through `systemctl --failed` and the journal commands above.
 
 Email alerting remains out of scope until SMTP is intentionally enabled.

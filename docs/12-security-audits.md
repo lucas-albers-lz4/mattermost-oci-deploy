@@ -51,13 +51,33 @@ Checks:
 
 ## Manual App Audit
 
-Mattermost app settings still require admin UI/API verification:
+Run on the VM:
+
+```sh
+/opt/mattermost/ops/app-audit.sh
+```
+
+For early trial (MFA deferred):
+
+```sh
+MFA_REQUIRED=false /opt/mattermost/ops/app-audit.sh
+```
+
+After MFA rollout:
+
+```sh
+MFA_REQUIRED=true /opt/mattermost/ops/app-audit.sh
+```
+
+Results append to `/opt/mattermost/ops/app-audit.log`.
+
+The script verifies:
 
 - Open signup disabled.
 - Email signup disabled unless intentionally enabled.
-- Team creation restricted.
+- Open server disabled (`EnableOpenServer=false`).
 - Strong password policy.
-- MFA enabled and enforced after admin enrollment.
-- Calls plugin enabled with correct ICE Host Override.
+- Calls plugin installed with ICE host override.
+- MFA enabled and enforced when `MFA_REQUIRED=true`.
 
 Record the date and outcome of each manual app audit in operational notes.

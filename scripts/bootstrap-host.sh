@@ -102,6 +102,8 @@ if [ "$COPY_ASSETS" = "true" ]; then
   cp "$REPO_DIR/scripts/harden-host.sh" "$APP_DIR/ops/harden-host.sh"
   cp "$REPO_DIR/scripts/build-mattermost-image.sh" "$APP_DIR/ops/build-mattermost-image.sh"
   cp "$REPO_DIR/scripts/security-audit.sh" "$APP_DIR/ops/security-audit.sh"
+  cp "$REPO_DIR/scripts/app-audit.sh" "$APP_DIR/ops/app-audit.sh"
+  cp "$REPO_DIR/scripts/install-calls-plugin.sh" "$APP_DIR/ops/install-calls-plugin.sh"
   cp "$REPO_DIR/scripts/lib/common.sh" "$APP_DIR/ops/lib/common.sh"
   cp "$REPO_DIR/templates/sshd/99-mattermost-hardening.conf" "$APP_DIR/ops/99-mattermost-hardening.conf"
   chmod 755 "$APP_DIR/mattermost-arm64/entrypoint.sh" "$APP_DIR/postgres/init/001-create-mattermost-dbs.sh"

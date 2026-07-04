@@ -214,6 +214,10 @@ else
   ssh $SSH_REMOTE_OPTS "$REMOTE_USER@$public_ip" "cd '$APP_DIR' && docker compose --env-file .env -p mattermost -f compose.yml up -d"
 fi
 
+echo "Installing Calls plugin on production (idempotent)"
+# shellcheck disable=SC2086
+ssh $SSH_REMOTE_OPTS "$REMOTE_USER@$public_ip" "APP_DIR='$APP_DIR' '$APP_DIR/ops/install-calls-plugin.sh'"
+
 echo "Verifying deployment"
 # shellcheck disable=SC2086
 ssh $SSH_REMOTE_OPTS "$REMOTE_USER@$public_ip" "APP_DIR='$APP_DIR' '$APP_DIR/ops/health-check.sh'"
