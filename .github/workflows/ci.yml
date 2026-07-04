@@ -19,22 +19,25 @@ jobs:
         with:
           tofu_version: 1.9.x
 
+      - name: OpenTofu init
+        run: tofu -chdir=infra/opentofu init -backend=false
+
       - name: Repo audit
         run: scripts/security-audit.sh --repo-only
 
       - name: OpenTofu validate
-        run: |
-          tofu -chdir=infra/opentofu init -backend=false
-          tofu -chdir=infra/opentofu validate
+        run: tofu -chdir=infra/opentofu validate
 
   gitleaks:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      - name: Gitleaks
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install gitleaks
+        run: |
+          GITLEAKS_VERSION=8.24.3
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" | tar xz gitleaks
+          sudo install gitleaks /usr/local/bin/gitleaks
+
+      - name: Detect secrets
+        run: gitleaks detect --no-git --redact --source .
