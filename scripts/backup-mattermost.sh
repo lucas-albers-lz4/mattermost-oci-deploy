@@ -9,6 +9,7 @@ BACKUP_ROOT=${BACKUP_ROOT:-/opt/mattermost/backups}
 TIMESTAMP=$(date -u +%Y%m%dT%H%M%SZ)
 BACKUP_DIR="$BACKUP_ROOT/$TIMESTAMP"
 LOG_PREFIX="[mattermost-backup]"
+TEST_PROFILE=upgrade-test
 
 cd "$APP_DIR"
 load_env
@@ -16,10 +17,34 @@ BUCKET_NAME=${BACKUP_BUCKET_NAME:-mattermost-backups}
 LOCAL_RETENTION_DAYS=${LOCAL_BACKUP_RETENTION_DAYS:-7}
 mkdir -p "$BACKUP_DIR"
 
-apps_started=0
+prod_was_running=0
+test_was_running=0
+apps_stopped=0
+
+service_running() {
+  service=$1
+  profile=${2:-}
+  if [ -n "$profile" ]; then
+    id=$(compose --profile "$profile" ps -q "$service" 2>/dev/null || true)
+  else
+    id=$(compose ps -q "$service" 2>/dev/null || true)
+  fi
+  [ -n "$id" ] || return 1
+  [ "$(docker inspect -f '{{.State.Status}}' "$id")" = "running" ]
+}
+
 restart_apps() {
-  if [ "$apps_started" = "1" ]; then
-    compose up -d mattermost-prod mattermost-test caddy >/dev/null || true
+  if [ "$apps_stopped" = "0" ]; then
+    return 0
+  fi
+  if [ "$prod_was_running" = "1" ]; then
+    compose up -d mattermost-prod >/dev/null || true
+  fi
+  if [ "$test_was_running" = "1" ]; then
+    compose --profile "$TEST_PROFILE" up -d mattermost-test >/dev/null || true
+  fi
+  if [ "$prod_was_running" = "1" ] || [ "$test_was_running" = "1" ]; then
+    compose up -d caddy >/dev/null || true
   fi
 }
 
@@ -36,8 +61,16 @@ trap finish EXIT
 
 echo "$LOG_PREFIX starting $TIMESTAMP"
 
-compose stop mattermost-prod mattermost-test >/dev/null
-apps_started=1
+if service_running mattermost-prod; then
+  prod_was_running=1
+  compose stop mattermost-prod >/dev/null
+  apps_stopped=1
+fi
+if service_running mattermost-test "$TEST_PROFILE"; then
+  test_was_running=1
+  compose --profile "$TEST_PROFILE" stop mattermost-test >/dev/null
+  apps_stopped=1
+fi
 
 compose exec -T -e PGPASSWORD="$POSTGRES_SUPER_PASSWORD" postgres \
   pg_dump -U postgres -d "$MM_PROD_DB_NAME" --format=custom --file=/tmp/prod.dump

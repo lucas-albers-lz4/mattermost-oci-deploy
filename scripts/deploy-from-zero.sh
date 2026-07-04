@@ -218,12 +218,23 @@ echo "Installing Calls plugin on production (idempotent)"
 # shellcheck disable=SC2086
 ssh $SSH_REMOTE_OPTS "$REMOTE_USER@$public_ip" "APP_DIR='$APP_DIR' '$APP_DIR/ops/install-calls-plugin.sh'"
 
-echo "Verifying deployment"
+echo "Verifying production deployment"
 # shellcheck disable=SC2086
 ssh $SSH_REMOTE_OPTS "$REMOTE_USER@$public_ip" "APP_DIR='$APP_DIR' '$APP_DIR/ops/health-check.sh'"
+
+echo "Validating test instance once, then stopping to save resources"
+# shellcheck disable=SC2086
+ssh $SSH_REMOTE_OPTS "$REMOTE_USER@$public_ip" "APP_DIR='$APP_DIR' '$APP_DIR/ops/manage-test-instance.sh' start"
+# shellcheck disable=SC2086
+ssh $SSH_REMOTE_OPTS "$REMOTE_USER@$public_ip" "APP_DIR='$APP_DIR' '$APP_DIR/ops/health-check.sh'"
+# shellcheck disable=SC2086
+ssh $SSH_REMOTE_OPTS "$REMOTE_USER@$public_ip" "APP_DIR='$APP_DIR' '$APP_DIR/ops/manage-test-instance.sh' stop"
+
+echo "Running host security audit"
 # shellcheck disable=SC2086
 ssh $SSH_REMOTE_OPTS "$REMOTE_USER@$public_ip" "APP_DIR='$APP_DIR' '$APP_DIR/ops/security-audit.sh' --host-only"
 
 echo "Deployment complete:"
 echo "  Production: https://$prod_hostname/"
-echo "  Test: https://$test_hostname/"
+echo "  Test: https://$test_hostname/ (start with: ops/manage-test-instance.sh start)"
+echo "  See docs/07-upgrades.md for upgrade-test workflow"

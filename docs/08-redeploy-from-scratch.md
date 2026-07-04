@@ -77,6 +77,8 @@ cp scripts/health-check.sh /opt/mattermost/ops/health-check.sh
 cp scripts/harden-host.sh /opt/mattermost/ops/harden-host.sh
 cp scripts/build-mattermost-image.sh /opt/mattermost/ops/build-mattermost-image.sh
 cp scripts/security-audit.sh /opt/mattermost/ops/security-audit.sh
+cp scripts/manage-test-instance.sh /opt/mattermost/ops/manage-test-instance.sh
+cp templates/postgres/README.md /opt/mattermost/postgres/README.md
 mkdir -p /opt/mattermost/ops/lib
 cp scripts/lib/common.sh /opt/mattermost/ops/lib/common.sh
 cp templates/sshd/99-mattermost-hardening.conf /opt/mattermost/ops/99-mattermost-hardening.conf

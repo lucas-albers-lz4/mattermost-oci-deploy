@@ -46,6 +46,7 @@ Checks:
 - Containers keep `no-new-privileges`.
 - Mattermost and Caddy use the expected capability drops/additions.
 - PostgreSQL capability dropping is reported as a warning, not a failure, because fresh-volume initialization failed with `cap_drop: [ALL]`.
+- `mattermost-test` security checks warn when the test instance is idle (expected during normal operation).
 - Docker seccomp/AppArmor are not explicitly disabled.
 - Mattermost health check passes.
 

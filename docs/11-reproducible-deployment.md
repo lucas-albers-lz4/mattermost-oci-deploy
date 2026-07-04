@@ -49,8 +49,8 @@ The script will:
 6. Bootstrap host packages and timers.
 7. Apply host hardening with UFW, Fail2ban, and SSH hardening.
 8. Build the local ARM64 Mattermost image.
-9. Start the stack.
-10. Run health and security checks.
+9. Start the production stack (test instance stays idle by default).
+10. Validate production, run test once, stop test, and run security checks.
 
 ## Restore Deployment
 
@@ -59,7 +59,7 @@ scripts/deploy-from-zero.sh --restore <backup-timestamp>
 ```
 
 Restore mode provisions the VM, downloads the selected Object Storage backup, validates checksums, and runs the guarded production restore path.
-It restores both production and test instances so the rebuilt stack is populated and the final health check can validate both hostnames.
+It restores both production and test data; the test app may be started briefly for validation before returning to idle. See [`docs/14-performance.md`](14-performance.md).
 
 ## Manual DNS Checkpoint
 

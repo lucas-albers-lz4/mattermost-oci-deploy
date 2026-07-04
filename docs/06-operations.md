@@ -36,7 +36,14 @@ docker compose --env-file .env -p mattermost -f compose.yml logs -f mattermost-t
 
 ```sh
 cd /opt/mattermost
-docker compose --env-file .env -p mattermost -f compose.yml restart mattermost-prod mattermost-test caddy
+docker compose --env-file .env -p mattermost -f compose.yml restart mattermost-prod caddy
+```
+
+Restart test only when it is running for upgrade validation:
+
+```sh
+/opt/mattermost/ops/manage-test-instance.sh status
+docker compose --env-file .env -p mattermost -f compose.yml --profile upgrade-test restart mattermost-test
 ```
 
 ## Health Check
@@ -66,12 +73,14 @@ The health check validates:
 
 - Root disk usage
 - Available memory
-- Container running state
+- Container running state for production path (`postgres`, `mattermost-prod`, `caddy`)
 - Production public HTTPS
 - Production internal app HTTP
-- Test internal app HTTP
+- Test internal app HTTP **only when** `mattermost-test` is running (skipped when idle)
 
 Test public HTTPS is not checked from the VM because Caddy intentionally restricts test by client IP.
+
+See [`docs/14-performance.md`](14-performance.md) for why the test instance is stopped during normal operation and how to start it for upgrades.
 
 If `ALERT_WEBHOOK_URL` is set in `/opt/mattermost/.env`, health check failures send a JSON webhook:
 

@@ -82,6 +82,10 @@ The default deployment keeps the public surface small:
 
 See [`docs/09-security-hardening.md`](docs/09-security-hardening.md) and [`docs/12-security-audits.md`](docs/12-security-audits.md).
 
+## Performance
+
+Free-tier tuning: Postgres memory caps, idle test instance, Bleve search, and Go runtime limits. See [`docs/14-performance.md`](docs/14-performance.md).
+
 ## Backups And Restore
 
 Backups include Mattermost databases, Mattermost volumes, Caddy volumes, and deployment config snapshots. They are stored locally and uploaded to OCI Object Storage under `daily/<timestamp>/`.

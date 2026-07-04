@@ -69,6 +69,18 @@ cd /opt/mattermost
 docker compose --env-file .env -p mattermost -f compose.yml up -d
 ```
 
+Only production, Postgres, and Caddy start by default. The test Mattermost container uses the `upgrade-test` Compose profile and stays stopped to save RAM on the free-tier VM.
+
+After first deploy, validate test once then return to idle:
+
+```sh
+/opt/mattermost/ops/manage-test-instance.sh start
+/opt/mattermost/ops/health-check.sh
+/opt/mattermost/ops/manage-test-instance.sh stop
+```
+
+`deploy-from-zero.sh` runs this sequence automatically. See [`docs/14-performance.md`](14-performance.md).
+
 Verify:
 
 ```sh

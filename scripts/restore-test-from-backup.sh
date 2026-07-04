@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Restore the test Mattermost instance from a local backup timestamp.
+# Starts mattermost-test for validation; run manage-test-instance.sh stop afterward
+# during normal operation to free RAM and CPU. See docs/14-performance.md.
 set -euo pipefail
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -37,8 +40,8 @@ done
   exit 67
 }
 
-echo "[restore-test] stopping test app"
-compose stop mattermost-test >/dev/null
+echo "[restore-test] stopping test app if running"
+"$SCRIPT_DIR/manage-test-instance.sh" stop >/dev/null || true
 
 for volume in test-config test-data test-logs test-plugins test-client-plugins test-bleve; do
   docker run --rm -v "$(volume_name "$volume"):/target" alpine sh -c 'find /target -mindepth 1 -maxdepth 1 -exec rm -rf {} +'
@@ -85,6 +88,8 @@ compose exec -T -e PGPASSWORD="$POSTGRES_SUPER_PASSWORD" postgres \
   pg_restore -U postgres -d "$MM_TEST_DB_NAME" --clean --if-exists /tmp/test-db.dump
 compose exec -T postgres rm -f /tmp/test-db.dump
 
-echo "[restore-test] starting test app"
-compose up -d mattermost-test caddy >/dev/null
+echo "[restore-test] starting test app for validation"
+"$SCRIPT_DIR/manage-test-instance.sh" start
+compose up -d caddy >/dev/null
 echo "[restore-test] completed $BACKUP_TS"
+echo "[restore-test] stop test when done: $SCRIPT_DIR/manage-test-instance.sh stop"

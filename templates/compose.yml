@@ -1,10 +1,26 @@
 services:
+  # Postgres tuning targets a 12 GB / 2 OCPU free-tier host. See docs/14-performance.md.
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
     init: true
     security_opt:
       - no-new-privileges:true
+    mem_limit: 3g
+    command:
+      - postgres
+      - -c
+      - shared_buffers=512MB
+      - -c
+      - effective_cache_size=2048MB
+      - -c
+      - maintenance_work_mem=128MB
+      - -c
+      - work_mem=8MB
+      - -c
+      - random_page_cost=1.1
+      - -c
+      - max_connections=100
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_SUPER_PASSWORD}
@@ -39,10 +55,14 @@ services:
       postgres:
         condition: service_healthy
     environment:
+      GOMAXPROCS: "2"
+      GOMEMLIMIT: 3750MiB
       MM_SERVICESETTINGS_SITEURL: https://${PROD_HOSTNAME}
       MM_SERVICESETTINGS_LISTENADDRESS: :8000
       MM_SQLSETTINGS_DRIVERNAME: postgres
       MM_SQLSETTINGS_DATASOURCE: postgres://${MM_PROD_DB_USER}:${MM_PROD_DB_PASSWORD}@postgres:5432/${MM_PROD_DB_NAME}?sslmode=disable&connect_timeout=10
+      MM_SQLSETTINGS_MAXOPENCONNS: "25"
+      MM_SQLSETTINGS_MAXIDLECONNS: "10"
       MM_FILESETTINGS_DIRECTORY: /mattermost/data/
       MM_PLUGINSETTINGS_DIRECTORY: /mattermost/plugins/
       MM_PLUGINSETTINGS_CLIENTDIRECTORY: /mattermost/client/plugins/
@@ -74,6 +94,7 @@ services:
     mem_limit: 4g
 
   mattermost-test:
+    profiles: [upgrade-test]
     image: local/mattermost-arm64:${MM_VERSION}
     restart: unless-stopped
     init: true
@@ -85,6 +106,8 @@ services:
       postgres:
         condition: service_healthy
     environment:
+      GOMAXPROCS: "1"
+      GOMEMLIMIT: 1800MiB
       MM_SERVICESETTINGS_SITEURL: https://${TEST_HOSTNAME}
       MM_SERVICESETTINGS_LISTENADDRESS: :8000
       MM_SQLSETTINGS_DRIVERNAME: postgres
@@ -114,7 +137,6 @@ services:
       - NET_BIND_SERVICE
     depends_on:
       - mattermost-prod
-      - mattermost-test
     environment:
       PROD_HOSTNAME: ${PROD_HOSTNAME}
       TEST_HOSTNAME: ${TEST_HOSTNAME}

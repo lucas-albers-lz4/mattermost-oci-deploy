@@ -205,7 +205,20 @@ host_audit() {
       fail "caddy config validates"
     fi
     for service in postgres mattermost-prod mattermost-test caddy; do
-      cid=$(container_id "$service")
+      if [ "$service" = "mattermost-test" ]; then
+        cid=$(compose --profile upgrade-test ps -q mattermost-test 2>/dev/null || true)
+        if [ -z "$cid" ]; then
+          warn "mattermost-test idle (profile inactive)"
+          continue
+        fi
+        test_state=$(docker inspect --format '{{.State.Status}}' "$cid")
+        if [ "$test_state" != "running" ]; then
+          warn "mattermost-test idle ($test_state)"
+          continue
+        fi
+      else
+        cid=$(container_id "$service")
+      fi
       privileged=$(docker inspect --format '{{.HostConfig.Privileged}}' "$cid")
       security_opts=$(docker inspect --format '{{range .HostConfig.SecurityOpt}}{{.}},{{end}}' "$cid")
       cap_drop=$(docker inspect --format '{{range .HostConfig.CapDrop}}{{.}},{{end}}' "$cid")

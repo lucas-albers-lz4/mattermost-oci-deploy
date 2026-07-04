@@ -50,12 +50,14 @@ local/mattermost-arm64:${MM_VERSION}
 
 ## Deploy Test
 
+Start the test instance (idle by default; see [`14-performance.md`](14-performance.md)):
+
 ```sh
 cd /opt/mattermost
-docker compose --env-file .env -p mattermost -f compose.yml up -d --no-deps mattermost-test
+/opt/mattermost/ops/manage-test-instance.sh start
 ```
 
-The test service has no dependency on the production service; `--no-deps` is an extra guard against changing production during test validation.
+The helper activates the `upgrade-test` Compose profile and waits for internal HTTP. The test service has no dependency on production.
 
 Validate:
 
@@ -80,7 +82,10 @@ Only after test passes:
 ```sh
 cd /opt/mattermost
 docker compose --env-file .env -p mattermost -f compose.yml up -d mattermost-prod caddy
+/opt/mattermost/ops/manage-test-instance.sh stop
 ```
+
+Stopping test after production deploy returns the VM to the normal idle state (~2 GB RAM freed).
 
 Validate:
 
