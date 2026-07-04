@@ -42,7 +42,7 @@ cmd_start() {
   cd "$APP_DIR"
   load_env
   compose --profile "$TEST_PROFILE" up -d "$TEST_SERVICE"
-  if ! wait_for_test_internal; then
+  if ! wait_for_test_internal 30; then
     die "mattermost-test did not respond with HTTP 200 on internal health check"
   fi
   echo "mattermost-test started and internal HTTP check passed"
