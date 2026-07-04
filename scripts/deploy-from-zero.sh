@@ -12,6 +12,8 @@ ENV_OUT=${ENV_OUT:-generated.env}
 SECRETS_FILE=${SECRETS_FILE:-.mattermost-secrets.env}
 SSH_REMOTE_OPTS=${SSH_REMOTE_OPTS:-}
 AUTO_CONFIRM_DNS=${AUTO_CONFIRM_DNS:-${AUTO_CONFIRM_DUCKDNS:-false}}
+DNS_VERIFY_TIMEOUT_SECONDS=${DNS_VERIFY_TIMEOUT_SECONDS:-300}
+DNS_VERIFY_INTERVAL_SECONDS=${DNS_VERIFY_INTERVAL_SECONDS:-10}
 APPLY_HOST_HARDENING=${APPLY_HOST_HARDENING:-true}
 APPLY_SSHD_HARDENING=${APPLY_SSHD_HARDENING:-true}
 
@@ -68,6 +70,52 @@ print(data.get(key, {}).get("value", ""))
 PY
 }
 
+dns_points_to_ip() {
+  hostname=$1
+  expected_ip=$2
+
+  python3 - "$hostname" "$expected_ip" <<'PY'
+import socket
+import sys
+
+hostname, expected_ip = sys.argv[1], sys.argv[2]
+try:
+    records = socket.getaddrinfo(hostname, None, socket.AF_INET, socket.SOCK_STREAM)
+except socket.gaierror:
+    sys.exit(1)
+
+resolved_ips = {record[4][0] for record in records}
+sys.exit(0 if expected_ip in resolved_ips else 1)
+PY
+}
+
+wait_for_dns() {
+  expected_ip=$1
+  shift
+  elapsed=0
+
+  echo "Verifying DNS resolves to $expected_ip..."
+  while [ "$elapsed" -le "$DNS_VERIFY_TIMEOUT_SECONDS" ]; do
+    all_ready=true
+    for hostname in "$@"; do
+      if dns_points_to_ip "$hostname" "$expected_ip"; then
+        echo "  $hostname -> $expected_ip"
+      else
+        echo "  waiting for $hostname -> $expected_ip"
+        all_ready=false
+      fi
+    done
+
+    [ "$all_ready" = "true" ] && return 0
+    sleep "$DNS_VERIFY_INTERVAL_SECONDS"
+    elapsed=$((elapsed + DNS_VERIFY_INTERVAL_SECONDS))
+  done
+
+  echo "DNS did not resolve to $expected_ip within ${DNS_VERIFY_TIMEOUT_SECONDS}s." >&2
+  echo "Update DNS for: $*" >&2
+  return 1
+}
+
 require_command tofu
 require_command python3
 require_command rsync
@@ -97,6 +145,8 @@ else
   echo "After updating DNS, press Enter to continue."
   read -r _
 fi
+
+wait_for_dns "$public_ip" "$prod_hostname" "$test_hostname"
 
 echo "Waiting for SSH on $public_ip..."
 for _ in $(seq 1 60); do
