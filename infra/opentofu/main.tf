@@ -123,6 +123,7 @@ resource "oci_core_network_security_group_security_rule" "https" {
   }
 }
 
+# Mattermost Calls WebRTC media (UDP); must match MM_CALLS_UDP_SERVER_PORT in compose.
 resource "oci_core_network_security_group_security_rule" "calls_udp" {
   network_security_group_id = oci_core_network_security_group.mattermost.id
   direction                 = "INGRESS"
