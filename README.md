@@ -1,41 +1,34 @@
-# Mattermost OCI Free Tier Deployment
+# Mattermost on OCI Free Tier
 
-This repository is a reproducible example for running a small self-hosted Mattermost deployment on Oracle Cloud Infrastructure (OCI) Free Tier resources.
+Private, self-hosted Mattermost on Oracle Cloud Infrastructure Always Free resources — a single VM with OpenTofu, Docker Compose, backups, and security hardening. This is **not** Discord, **not** high-availability enterprise chat, and **not** a managed SaaS product.
 
-It provisions OCI infrastructure with OpenTofu, configures an Ubuntu ARM64 VM, builds a local Mattermost ARM64 image from official release tarballs, and runs Mattermost behind Caddy with PostgreSQL, backups, restore drills, health checks, and host hardening.
+## Who this is for
 
-## What It Deploys
+- **Parents and community organizers** — how access works, what is and is not promised: [For parents and families](docs/for-parents.md) · [Community channel policy worksheet](docs/community-channel-policy.md)
+- **Operators deploying their own** — Quick Start below and [Reproducible deployment](docs/11-reproducible-deployment.md)
+- **Engineers reviewing the project** — [Architecture](docs/00-architecture.md) (includes [design decisions](docs/00-architecture.md#design-decisions)), [Security hardening](docs/09-security-hardening.md), [OpenTofu stack](infra/opentofu/README.md)
 
-- OCI `VM.Standard.A1.Flex` compute instance.
-- VCN, public subnet, route table, internet gateway, and network security group.
-- Private OCI Object Storage bucket for backups.
-- Docker Compose stack with:
-  - PostgreSQL 16.
-  - Mattermost production instance.
-  - Mattermost test instance.
-  - Caddy reverse proxy with automatic TLS.
-- Integrated Mattermost Calls over UDP `8443`.
-- Systemd timers for backups and health checks.
-- Host hardening with UFW, Fail2ban, SSH hardening, unattended security updates, and optional OCI Ksplice.
+## What you get
 
-## Non-Goals
+- OCI `VM.Standard.A1.Flex` compute, VCN, NSG, and private Object Storage bucket for backups (~$0 on Always Free; see OCI terms and your usage).
+- Docker Compose: PostgreSQL 16, Mattermost production + test, Caddy with automatic TLS.
+- Mattermost Calls over UDP `8443`; Bleve search (no Elasticsearch).
+- Daily backups, restore drills, health checks, and security audit scripts.
+- Host hardening: UFW, Fail2ban, SSH restrictions, unattended OS security updates, Caddy auto-update, optional alert webhooks.
 
-- This is not a high-availability deployment.
-- DNS updates are intentionally manual.
-- Email and SSO are intentionally left as later integrations.
-- This repo does not commit live secrets, generated environments, OpenTofu state, database dumps, or backup archives.
+## Limitations
 
-## Requirements
+Be honest about tradeoffs before adopting or inviting families:
 
-- macOS or Linux workstation with:
-  - OCI CLI configured.
-  - OpenTofu installed as `tofu`.
-  - SSH key pair for VM access.
-  - `rsync`, `ssh`, `python3`, and Docker for local validation.
-- OCI tenancy and compartment with permission to manage compute, networking, Object Storage, IAM policy, and dynamic groups.
-- Two DNS hostnames, for example:
-  - `chat.example.com`
-  - `chat-test.example.com`
+- **Single VM** — no HA; maintenance and upgrades can cause downtime.
+- **No end-to-end encryption** — the operator can read stored messages and backups.
+- **Not COPPA-certified** — adults are responsible for age and consent choices.
+- **Manual Mattermost/Postgres upgrades** — OS and Caddy patch automatically; app upgrades follow [docs/07-upgrades.md](docs/07-upgrades.md).
+- **Community shape is team/channel-based** — DM and call restrictions require deliberate policy and operator configuration; see [for-parents.md](docs/for-parents.md).
+
+## Architecture
+
+Component diagram and data flow: [docs/00-architecture.md](docs/00-architecture.md).
 
 ## Quick Start
 
@@ -64,75 +57,60 @@ Or restore from an existing backup timestamp:
 scripts/deploy-from-zero.sh --restore <backup-timestamp>
 ```
 
-The deploy script prints the VM public IP and pauses for the manual DNS update. After DNS points to the new VM, continue the script to bootstrap the host, build the image, start or restore Mattermost, and run validation.
+The deploy script prints the VM public IP and pauses for manual DNS. After DNS points to the new VM, continue to bootstrap, build the image, start or restore Mattermost, and validate.
 
-Start with [`docs/11-reproducible-deployment.md`](docs/11-reproducible-deployment.md) for the full workflow.
+Full workflow: [docs/11-reproducible-deployment.md](docs/11-reproducible-deployment.md).
 
-## Security Posture
+## Documentation
 
-The default deployment keeps the public surface small:
+Complete index by audience: [docs/README.md](docs/README.md).
 
-- OCI NSG allows SSH only from the admin CIDR.
-- UFW denies inbound traffic except SSH, HTTP, HTTPS, and Calls UDP.
-- PostgreSQL is not published on the host.
-- Mattermost app ports stay internal to Docker.
-- Caddy is the only public HTTP/TLS entry point.
-- Long-running containers use `no-new-privileges`; Mattermost and Caddy drop default capabilities.
-- Backups use OCI instance principals rather than static API keys on the VM.
+## Security
 
-See [`docs/09-security-hardening.md`](docs/09-security-hardening.md) and [`docs/12-security-audits.md`](docs/12-security-audits.md).
+Default posture: SSH from admin CIDR only, UFW, internal Postgres, Caddy as sole HTTP/TLS entry, instance-principal backups. See [docs/09-security-hardening.md](docs/09-security-hardening.md) and [docs/12-security-audits.md](docs/12-security-audits.md).
 
-## Performance
+## Performance and maintenance
 
-Free-tier tuning: Postgres memory caps, idle test instance, Bleve search, and Go runtime limits. See [`docs/14-performance.md`](docs/14-performance.md).
+- [docs/14-performance.md](docs/14-performance.md) — Postgres caps, idle test instance, Go limits.
+- [docs/15-unattended-updates.md](docs/15-unattended-updates.md) — OS patching, Caddy updates, update alerts.
 
-## Backups And Restore
+## Backups and restore
 
-Backups include Mattermost databases, Mattermost volumes, Caddy volumes, and deployment config snapshots. They are stored locally and uploaded to OCI Object Storage under `daily/<timestamp>/`.
+See [docs/05-backups-and-restore.md](docs/05-backups-and-restore.md).
 
-Restore paths:
-
-- Test restore drill: `restore-test-from-backup.sh`.
-- Guarded production restore: `restore-production-from-backup.sh`.
-- Full rebuild from backup: `deploy-from-zero.sh --restore <backup-timestamp>`.
-
-See [`docs/05-backups-and-restore.md`](docs/05-backups-and-restore.md).
-
-## Repository Layout
+## Repository layout
 
 ```text
 .
-├── docs/                 # Architecture, operations, hardening, and recovery guides
+├── docs/                 # Architecture, operations, parent/community guides
 ├── infra/opentofu/       # OCI infrastructure as code
-├── scripts/              # Deployment, backup, restore, audit, and host helpers
-└── templates/            # Docker Compose, Caddy, systemd, sshd, and image templates
+├── scripts/              # Deploy, backup, restore, audit, host helpers
+└── templates/            # Compose, Caddy, systemd, sshd, image templates
 ```
 
-## Local Files Not Committed
+## Local files not committed
 
-The following are intentionally ignored:
-
-- `.env`
-- `.mattermost-secrets.env`
-- `generated.env`
-- `infra/opentofu/terraform.tfvars`
-- `infra/opentofu/*.tfstate*`
-- `infra/opentofu/tfplan`
-- `.terraform/`
-- backup archives, dumps, private keys, and certificates
+`.env`, `.mattermost-secrets.env`, `generated.env`, `terraform.tfvars`, `*.tfstate*`, backup archives, keys, and certificates — see [`.gitignore`](.gitignore).
 
 ## Validation
 
-Run local checks before publishing changes:
-
 ```sh
 scripts/security-audit.sh --repo-only
-tofu -chdir=infra/opentofu validate
+tofu -chdir=infra/opentofu init -backend=false && tofu -chdir=infra/opentofu validate
 ```
 
-Run host checks on a deployed VM:
+On a deployed VM:
 
 ```sh
 /opt/mattermost/ops/health-check.sh
 /opt/mattermost/ops/security-audit.sh --host-only
 ```
+
+## Contributing and security
+
+- [CONTRIBUTING.md](CONTRIBUTING.md) — PR expectations and publish checklist
+- [SECURITY.md](SECURITY.md) — vulnerability reporting
+
+## License
+
+MIT — see [LICENSE](LICENSE).
