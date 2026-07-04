@@ -18,7 +18,7 @@ Private, self-hosted Mattermost on Oracle Cloud Infrastructure Always Free resou
 
 ## Limitations
 
-Be honest about tradeoffs before adopting or inviting families:
+Tradeoffs:
 
 - **Single VM** — no HA; maintenance and upgrades can cause downtime.
 - **No end-to-end encryption** — the operator can read stored messages and backups.
