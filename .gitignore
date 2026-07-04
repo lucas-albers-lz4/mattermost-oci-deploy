@@ -25,7 +25,9 @@ backups/
 .DS_Store
 .idea/
 .vscode/
+.cursor/
 *.swp
+.ssh-known-hosts
 
 # Runtime output
 logs/
