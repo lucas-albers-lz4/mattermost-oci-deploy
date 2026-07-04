@@ -1,0 +1,23 @@
+(security_headers) {
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		?X-Content-Type-Options "nosniff"
+		?Referrer-Policy "no-referrer"
+	}
+}
+
+{$PROD_HOSTNAME} {
+	import security_headers
+	encode zstd gzip
+	reverse_proxy mattermost-prod:8000
+}
+
+{$TEST_HOSTNAME} {
+	import security_headers
+	encode zstd gzip
+	@allowed remote_ip {$TEST_ALLOWED_CIDR}
+	handle @allowed {
+		reverse_proxy mattermost-test:8000
+	}
+	respond "Forbidden" 403
+}

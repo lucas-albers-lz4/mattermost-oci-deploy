@@ -1,0 +1,10 @@
+[Unit]
+Description=Run Mattermost backups daily
+
+[Timer]
+OnCalendar=*-*-* 08:15:00 UTC
+RandomizedDelaySec=30m
+Persistent=true
+
+[Install]
+WantedBy=timers.target

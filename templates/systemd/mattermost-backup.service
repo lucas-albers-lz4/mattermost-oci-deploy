@@ -1,0 +1,12 @@
+[Unit]
+Description=Back up Mattermost Docker Compose deployment
+Wants=docker.service network-online.target
+After=docker.service network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/mattermost
+ExecStart=/opt/mattermost/ops/backup-mattermost.sh
+Nice=5
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7

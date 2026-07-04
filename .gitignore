@@ -1,0 +1,56 @@
+# Secrets and live environment
+.env
+.mattermost-secrets.env
+generated.env
+*.env.local
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.csr
+*.pub
+.oci/
+
+# Backups and dumps
+backups/
+*.dump
+*.sql
+*.sql.gz
+*.tar
+*.tar.gz
+*.tgz
+
+# Local/editor noise
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Runtime output
+logs/
+tmp/
+/caddy/
+/mattermost-arm64/
+/postgres/
+/ops/
+
+# OpenTofu/Terraform local state and secrets
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+tfplan
+*.tfplan
+*.tfplan.json
+infra/opentofu/tfplan
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Tool caches
+.trivy/
+.gitleaks-report.*

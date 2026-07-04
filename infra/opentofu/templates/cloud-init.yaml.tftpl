@@ -1,0 +1,22 @@
+#cloud-config
+package_update: true
+packages:
+  - ca-certificates
+  - curl
+  - git
+  - rsync
+  - jq
+
+write_files:
+  - path: /etc/mattermost-oci-deploy
+    permissions: "0644"
+    owner: root:root
+    content: |
+      cloud-init-ready=true
+
+runcmd:
+  - install -d -m 0755 -o ubuntu -g ubuntu /opt/mattermost
+  - install -d -m 0755 -o ubuntu -g ubuntu /opt/mattermost/deploy
+  - install -d -m 0755 -o ubuntu -g ubuntu /opt/mattermost/backups
+  - echo "Mattermost OCI base cloud-init complete" > /opt/mattermost/cloud-init-ready
+  - chown ubuntu:ubuntu /opt/mattermost/cloud-init-ready

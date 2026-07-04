@@ -1,0 +1,14 @@
+tenancy_ocid       = "ocid1.tenancy.oc1..example"
+compartment_ocid   = "ocid1.compartment.oc1..example"
+region             = "us-phoenix-1"
+oci_profile        = "DEFAULT"
+ssh_public_key     = "ssh-ed25519 AAAA... user@example"
+admin_allowed_cidr = "198.51.100.10/32"
+
+prod_hostname = "chat.example.com"
+test_hostname = "chat-test.example.com"
+
+name_prefix               = "mattermost"
+availability_domain_index = 0
+backup_bucket_name        = "mattermost-backups"
+backup_retention_days     = 60
