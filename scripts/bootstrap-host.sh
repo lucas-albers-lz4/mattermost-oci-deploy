@@ -31,6 +31,8 @@ Unattended-Upgrade::Remove-New-Unused-Dependencies "true";
 Unattended-Upgrade::Remove-Unused-Dependencies "false";
 EOF
 
+  sudo install -m 0644 "$REPO_DIR/templates/apt/50unattended-upgrades-mattermost" /etc/apt/apt.conf.d/50unattended-upgrades-mattermost
+
   sudo install -m 0755 -d /etc/apt/keyrings
   if [ ! -f /etc/apt/keyrings/docker.gpg ]; then
     curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
@@ -105,6 +107,9 @@ if [ "$COPY_ASSETS" = "true" ]; then
   cp "$REPO_DIR/scripts/app-audit.sh" "$APP_DIR/ops/app-audit.sh"
   cp "$REPO_DIR/scripts/install-calls-plugin.sh" "$APP_DIR/ops/install-calls-plugin.sh"
   cp "$REPO_DIR/scripts/manage-test-instance.sh" "$APP_DIR/ops/manage-test-instance.sh"
+  cp "$REPO_DIR/scripts/scheduled-reboot.sh" "$APP_DIR/ops/scheduled-reboot.sh"
+  cp "$REPO_DIR/scripts/upgrade-caddy.sh" "$APP_DIR/ops/upgrade-caddy.sh"
+  cp "$REPO_DIR/scripts/check-updates.sh" "$APP_DIR/ops/check-updates.sh"
   cp "$REPO_DIR/templates/postgres/README.md" "$APP_DIR/postgres/README.md"
   cp "$REPO_DIR/scripts/lib/common.sh" "$APP_DIR/ops/lib/common.sh"
   cp "$REPO_DIR/templates/sshd/99-mattermost-hardening.conf" "$APP_DIR/ops/99-mattermost-hardening.conf"
@@ -119,11 +124,25 @@ if [ ! -f "$APP_DIR/.env" ]; then
 fi
 
 if [ "$INSTALL_TIMERS" = "true" ]; then
-  for unit in mattermost-backup.service mattermost-backup.timer mattermost-health.service mattermost-health.timer; do
+  for unit in \
+    mattermost-backup.service mattermost-backup.timer \
+    mattermost-health.service mattermost-health.timer \
+    mattermost-reboot.service mattermost-reboot.timer \
+    mattermost-caddy-update.service mattermost-caddy-update.timer \
+    mattermost-update-check.service mattermost-update-check.timer; do
     sudo install -m 0644 "$REPO_DIR/templates/systemd/$unit" "/etc/systemd/system/$unit"
   done
   sudo systemctl daemon-reload
-  sudo systemctl enable --now mattermost-backup.timer mattermost-health.timer
+  sudo systemctl enable --now \
+    mattermost-backup.timer \
+    mattermost-health.timer \
+    mattermost-reboot.timer \
+    mattermost-caddy-update.timer \
+    mattermost-update-check.timer
+fi
+
+if [ -f "$REPO_DIR/templates/apt/50unattended-upgrades-mattermost" ]; then
+  sudo install -m 0644 "$REPO_DIR/templates/apt/50unattended-upgrades-mattermost" /etc/apt/apt.conf.d/50unattended-upgrades-mattermost
 fi
 
 if [ "$INSTALL_PACKAGES" = "true" ]; then

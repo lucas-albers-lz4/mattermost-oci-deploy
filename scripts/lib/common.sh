@@ -47,6 +47,18 @@ notify_failure() {
   fi
 }
 
+notify_webhook() {
+  message=$1
+
+  if [ -n "${ALERT_WEBHOOK_URL:-}" ]; then
+    host=$(hostname)
+    curl -fsS --max-time 10 \
+      -H "Content-Type: application/json" \
+      -d "{\"text\":\"${message} on ${host}\"}" \
+      "$ALERT_WEBHOOK_URL" >/dev/null || true
+  fi
+}
+
 oci_namespace() {
   oci os ns get --auth instance_principal --query data --raw-output
 }
