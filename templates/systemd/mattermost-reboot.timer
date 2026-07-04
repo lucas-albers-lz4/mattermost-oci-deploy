@@ -1,0 +1,10 @@
+[Unit]
+Description=Reboot on Sunday 04:00 UTC if required by pending kernel updates
+
+[Timer]
+OnCalendar=Sun *-*-* 04:00:00 UTC
+Persistent=true
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

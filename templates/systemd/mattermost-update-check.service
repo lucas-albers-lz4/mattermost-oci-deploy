@@ -1,0 +1,9 @@
+[Unit]
+Description=Report available OS and container updates (notify only)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/mattermost
+ExecStart=/opt/mattermost/ops/check-updates.sh

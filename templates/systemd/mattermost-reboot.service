@@ -1,0 +1,6 @@
+[Unit]
+Description=Scheduled reboot when kernel updates require it
+
+[Service]
+Type=oneshot
+ExecStart=/opt/mattermost/ops/scheduled-reboot.sh

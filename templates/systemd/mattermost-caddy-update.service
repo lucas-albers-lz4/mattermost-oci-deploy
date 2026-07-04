@@ -1,0 +1,9 @@
+[Unit]
+Description=Pull and recreate Caddy reverse proxy image
+Wants=docker.service network-online.target
+After=docker.service network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/mattermost
+ExecStart=/opt/mattermost/ops/upgrade-caddy.sh

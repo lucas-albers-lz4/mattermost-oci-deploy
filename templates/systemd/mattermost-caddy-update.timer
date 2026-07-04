@@ -1,0 +1,10 @@
+[Unit]
+Description=Update Caddy image weekly on Sunday 05:00 UTC
+
+[Timer]
+OnCalendar=Sun *-*-* 05:00:00 UTC
+Persistent=true
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target
