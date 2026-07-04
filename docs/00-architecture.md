@@ -46,3 +46,18 @@ flowchart TD
 - Local image builds avoid registry credentials but add build time.
 - Manual DNS keeps the workflow provider-neutral but requires operator confirmation.
 - The test instance provides upgrade/restore validation without requiring another VM.
+
+## Design decisions
+
+Why this stack looks the way it does:
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| Orchestration | Docker Compose, not Kubernetes | Single VM, one operator; K8s adds cost and complexity without HA on Free Tier |
+| Mattermost image | Build ARM64 tarball on the VM | No registry credentials; matches OCI Ampere shape |
+| Test instance | Second Compose service on same VM | Upgrade/restore drills without a second VM; idle when not in use ([14-performance.md](14-performance.md)) |
+| Search | Bleve (built-in) | Sufficient for small communities; avoids Elasticsearch RAM on Free Tier |
+| Alerts | Mattermost incoming webhook (`ALERT_WEBHOOK_URL`) | Same chat server for ops notifications; no Slack dependency |
+| IaC | OpenTofu | Reproducible OCI networking, compute, Object Storage, IAM |
+| TLS | Caddy automatic HTTPS | Simple reverse proxy; auto-updated separately from Mattermost |
+| Community access model | Invite-only; teams/channels in UI | DM/call policy is a deliberate operator choice ([community-channel-policy.md](community-channel-policy.md)) |

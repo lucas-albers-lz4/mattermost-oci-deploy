@@ -78,6 +78,9 @@ cp scripts/harden-host.sh /opt/mattermost/ops/harden-host.sh
 cp scripts/build-mattermost-image.sh /opt/mattermost/ops/build-mattermost-image.sh
 cp scripts/security-audit.sh /opt/mattermost/ops/security-audit.sh
 cp scripts/manage-test-instance.sh /opt/mattermost/ops/manage-test-instance.sh
+cp scripts/scheduled-reboot.sh /opt/mattermost/ops/scheduled-reboot.sh
+cp scripts/upgrade-caddy.sh /opt/mattermost/ops/upgrade-caddy.sh
+cp scripts/check-updates.sh /opt/mattermost/ops/check-updates.sh
 cp templates/postgres/README.md /opt/mattermost/postgres/README.md
 mkdir -p /opt/mattermost/ops/lib
 cp scripts/lib/common.sh /opt/mattermost/ops/lib/common.sh
@@ -93,8 +96,15 @@ sudo install -m 0644 templates/systemd/mattermost-backup.service /etc/systemd/sy
 sudo install -m 0644 templates/systemd/mattermost-backup.timer /etc/systemd/system/mattermost-backup.timer
 sudo install -m 0644 templates/systemd/mattermost-health.service /etc/systemd/system/mattermost-health.service
 sudo install -m 0644 templates/systemd/mattermost-health.timer /etc/systemd/system/mattermost-health.timer
+sudo install -m 0644 templates/systemd/mattermost-reboot.service /etc/systemd/system/mattermost-reboot.service
+sudo install -m 0644 templates/systemd/mattermost-reboot.timer /etc/systemd/system/mattermost-reboot.timer
+sudo install -m 0644 templates/systemd/mattermost-caddy-update.service /etc/systemd/system/mattermost-caddy-update.service
+sudo install -m 0644 templates/systemd/mattermost-caddy-update.timer /etc/systemd/system/mattermost-caddy-update.timer
+sudo install -m 0644 templates/systemd/mattermost-update-check.service /etc/systemd/system/mattermost-update-check.service
+sudo install -m 0644 templates/systemd/mattermost-update-check.timer /etc/systemd/system/mattermost-update-check.timer
+sudo install -m 0644 templates/apt/50unattended-upgrades-mattermost /etc/apt/apt.conf.d/50unattended-upgrades-mattermost
 sudo systemctl daemon-reload
-sudo systemctl enable --now mattermost-backup.timer mattermost-health.timer
+sudo systemctl enable --now mattermost-backup.timer mattermost-health.timer mattermost-reboot.timer mattermost-caddy-update.timer mattermost-update-check.timer
 ```
 
 Replace Caddy placeholders with real values if Caddy is not reading them from environment:

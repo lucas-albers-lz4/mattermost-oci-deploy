@@ -112,6 +112,8 @@ grep -E '^autoinstall[[:space:]]*=[[:space:]]*yes' /etc/uptrack/uptrack.conf
 
 Ksplice covers supported kernel live patches. Continue to review userspace package, Docker/containerd, image, and Mattermost updates separately.
 
+See [`docs/15-unattended-updates.md`](docs/15-unattended-updates.md) for the full unattended update schedule (Sunday reboot window, Caddy auto-update, Monday update report).
+
 Check pending package updates:
 
 ```sh
