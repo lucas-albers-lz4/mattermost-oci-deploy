@@ -1,0 +1,126 @@
+# 15 - Unattended Updates
+
+This deployment minimizes routine patching work while keeping high-risk application upgrades manual and test-gated.
+
+## Policy summary
+
+| Component | Automation | Notes |
+| --- | --- | --- |
+| Ubuntu security packages | Automatic | `unattended-upgrades` daily |
+| Kernel (Ksplice) | Automatic when supported | OCI live patches without reboot |
+| Kernel reboot | **Sunday 04:00 UTC** if required | Only when `/var/run/reboot-required` exists |
+| Docker Engine (`docker-ce`, `containerd`) | Automatic via apt | Docker CE origin allowed in unattended-upgrades |
+| **Caddy** container | **Automatic** | Sunday 05:00 UTC pull + recreate |
+| **Postgres** container | **Manual** | Weekly notify-only check |
+| **Mattermost** app image | **Manual** | Weekly notify-only check; follow [`07-upgrades.md`](07-upgrades.md) |
+| Custom `local/mattermost-arm64` build | **Manual** | Never auto-rebuilt |
+
+Bleve search and Postgres major/minor upgrades stay manual to avoid surprise schema or index changes.
+
+## Weekly schedule (UTC)
+
+| When | Action |
+| --- | --- |
+| Daily | `unattended-upgrades`, Ksplice autoinstall |
+| Daily 08:15 (+ jitter) | Backup timer |
+| Every 15 min | Health check |
+| **Sun 04:00** | Reboot if kernel update requires it |
+| **Sun 05:00** | Auto-update **Caddy** only |
+| **Mon 09:00** | Update report (stdout + optional webhook) |
+
+## Ops scripts
+
+On the VM under `/opt/mattermost/ops/`:
+
+```sh
+/opt/mattermost/ops/scheduled-reboot.sh   # normally run by timer only
+/opt/mattermost/ops/upgrade-caddy.sh      # pull, validate, recreate caddy
+/opt/mattermost/ops/check-updates.sh      # notify-only summary
+```
+
+## Systemd timers
+
+```sh
+systemctl list-timers 'mattermost-*'
+```
+
+| Timer | Purpose |
+| --- | --- |
+| `mattermost-reboot.timer` | Scheduled reboot window |
+| `mattermost-caddy-update.timer` | Caddy image refresh |
+| `mattermost-update-check.timer` | Weekly pending-update report |
+| `mattermost-backup.timer` | Daily backups |
+| `mattermost-health.timer` | Health checks |
+
+Install or refresh timers via bootstrap:
+
+```sh
+APP_DIR=/opt/mattermost REPO_DIR=/path/to/repo INSTALL_PACKAGES=false COPY_ASSETS=true /path/to/repo/scripts/bootstrap-host.sh
+```
+
+## Alerting
+
+Set `ALERT_WEBHOOK_URL` in `/opt/mattermost/.env` to receive JSON webhooks when:
+
+- Caddy auto-update fails
+- Weekly update check finds pending reboot, Docker, Postgres, or Mattermost updates
+
+Health and backup failures use the same webhook (see [`06-operations.md`](06-operations.md)).
+
+### Mattermost incoming webhook setup
+
+1. In Mattermost (prod): **Integrations → Incoming Webhooks → Add Incoming Webhook**.
+2. Choose an ops channel (e.g. `#alerts`) and copy the URL — it must contain `/hooks/`, not a channel browse link.
+3. On the VM, set in `/opt/mattermost/.env`:
+
+   ```sh
+   ALERT_WEBHOOK_URL=https://chat.example.com/hooks/xxxxxxxxxxxxxxxxxx
+   ```
+
+4. Test:
+
+   ```sh
+   curl -sS -X POST -H 'Content-Type: application/json' \
+     -d '{"text":"Test alert from mattermost-oci-deploy"}' \
+     "$ALERT_WEBHOOK_URL"
+   ```
+
+See [`templates/env.example`](../templates/env.example) for the placeholder format.
+
+## Pause automation
+
+```sh
+sudo systemctl disable --now mattermost-caddy-update.timer
+sudo systemctl disable --now mattermost-reboot.timer
+sudo systemctl disable --now mattermost-update-check.timer
+```
+
+Re-enable with `sudo systemctl enable --now <timer>`.
+
+## Manual Mattermost / Postgres upgrades
+
+When `check-updates.sh` or the Monday webhook reports a newer version:
+
+1. Back up ([`05-backups-and-restore.md`](05-backups-and-restore.md))
+2. Follow [`07-upgrades.md`](07-upgrades.md) for Mattermost
+3. For Postgres: pull image, test on `upgrade-test` profile if needed, recreate during a maintenance window
+
+## Apt configuration
+
+- [`templates/apt/50unattended-upgrades-mattermost`](../templates/apt/50unattended-upgrades-mattermost) — allows Ubuntu security + Docker CE origins
+- `52mattermost-security-upgrades` — keeps apt automatic reboot disabled (timer handles reboots instead)
+
+## Verification
+
+```sh
+/opt/mattermost/ops/security-audit.sh --host-only
+/opt/mattermost/ops/check-updates.sh
+/opt/mattermost/ops/upgrade-caddy.sh
+grep -r 'Docker CE' /etc/apt/apt.conf.d/
+```
+
+## Non-goals
+
+- Watchtower or auto-recreate for Postgres / Mattermost
+- Email notifications
+- OCI OS Management Hub

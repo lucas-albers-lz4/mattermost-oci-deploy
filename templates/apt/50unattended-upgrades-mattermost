@@ -1,0 +1,10 @@
+// Allow Docker CE stable updates for docker-ce, containerd.io, and compose plugin.
+// Reboots are handled by mattermost-reboot.timer (Sunday 04:00 UTC), not apt.
+Unattended-Upgrade::Allowed-Origins {
+    "${distro_id}:${distro_codename}";
+    "${distro_id}:${distro_codename}-security";
+    "${distro_id}ESMApps:${distro_codename}-apps-security";
+    "${distro_id}ESM:${distro_codename}-infra-security";
+    "Docker CE:${distro_codename}";
+    "Docker CE:stable";
+};

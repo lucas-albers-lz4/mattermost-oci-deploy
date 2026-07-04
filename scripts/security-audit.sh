@@ -148,6 +148,22 @@ host_audit() {
   else
     warn "daily unattended security updates not configured"
   fi
+  if [ -f /etc/apt/apt.conf.d/50unattended-upgrades-mattermost ] && grep -q 'Docker CE' /etc/apt/apt.conf.d/50unattended-upgrades-mattermost; then
+    pass "docker ce origin allowed for unattended-upgrades"
+  else
+    warn "docker ce origin not configured for unattended-upgrades"
+  fi
+  if [ -f /var/run/reboot-required ]; then
+    dow=$(date -u +%u)
+    hour=$(date -u +%H)
+    if [ "$dow" = "7" ] && [ "$hour" -ge 4 ] && [ "$hour" -lt 6 ]; then
+      pass "reboot pending within scheduled Sunday window"
+    else
+      warn "reboot pending outside Sunday 04:00-06:00 UTC window"
+    fi
+  else
+    pass "no pending reboot flag"
+  fi
   if have uptrack-upgrade; then
     pass "Ksplice installed"
     if [ -f /etc/uptrack/uptrack.conf ] && grep -Eq '^autoinstall[[:space:]]*=[[:space:]]*yes' /etc/uptrack/uptrack.conf; then
@@ -176,6 +192,13 @@ host_audit() {
   else
     fail "backup timer inactive"
   fi
+  for timer in mattermost-reboot.timer mattermost-caddy-update.timer mattermost-update-check.timer; do
+    if systemctl is-enabled --quiet "$timer" 2>/dev/null && systemctl is-active --quiet "$timer"; then
+      pass "$timer active"
+    else
+      warn "$timer inactive or not enabled"
+    fi
+  done
 
   if have docker && declare -F compose >/dev/null 2>&1; then
     compose ps >/tmp/mattermost-compose-ps.txt
