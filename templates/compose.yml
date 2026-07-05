@@ -82,6 +82,8 @@ services:
       MM_PASSWORDSETTINGS_SYMBOL: "true"
       MM_SERVICESETTINGS_ENABLELOCALMODE: "true"
       MM_PLUGINSETTINGS_ENABLEUPLOADS: "false"
+      MM_EMAILSETTINGS_SENDPUSHNOTIFICATIONS: "true"
+      MM_EMAILSETTINGS_PUSHNOTIFICATIONSERVER: ${MM_PUSH_NOTIFICATION_SERVER:-https://global.push.mattermost.com}
     volumes:
       - prod-config:/mattermost/config
       - prod-data:/mattermost/data

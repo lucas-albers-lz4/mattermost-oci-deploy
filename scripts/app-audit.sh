@@ -73,6 +73,12 @@ expect_string() {
     fail "Calls plugin not installed"
   fi
 
+  if compose exec -T -u mattermost mattermost-prod /mattermost/bin/mmctl --local plugin list 2>/dev/null | grep -q 'com.lalbers.community-admin: Community Admin'; then
+    pass "Community Admin plugin installed"
+  else
+    note "Community Admin plugin not installed (optional)"
+  fi
+
   ice_host=$(mmctl_cfg "PluginSettings.Plugins.com.mattermost.calls.icehostoverride" 2>/dev/null || true)
   if [ -z "$ice_host" ] || [ "$ice_host" = "{}" ] || [ "$ice_host" = "null" ]; then
     if compose exec -T mattermost-prod env | grep -q "^MM_CALLS_ICE_HOST_OVERRIDE="; then
@@ -84,6 +90,25 @@ expect_string() {
     pass "Calls ICE host override=$ice_host"
   else
     note "Calls ICE host override=$ice_host (verify against prod hostname)"
+  fi
+
+  expect_bool "SendPushNotifications" "EmailSettings.SendPushNotifications" "true"
+  expected_push_server=${MM_PUSH_NOTIFICATION_SERVER:-https://global.push.mattermost.com}
+  expect_string "PushNotificationServer" "EmailSettings.PushNotificationServer" "$expected_push_server"
+
+  mention_only=$(compose exec -T postgres psql -U postgres -d mattermost_prod -t -A -c "
+    SELECT COUNT(*) FROM users u
+    WHERE u.deleteat = 0
+      AND u.username <> 'calls'
+      AND NOT EXISTS (SELECT 1 FROM bots b WHERE b.userid = u.id)
+      AND u.notifyprops->>'push' = 'mention';
+  " 2>/dev/null || echo "error")
+  if [ "$mention_only" = "0" ]; then
+    pass "No human users left on push=mention"
+  elif [ "$mention_only" = "error" ]; then
+    fail "Could not query user push preferences"
+  else
+    fail "$mention_only human user(s) still on push=mention (run configure-push-notifications.sh)"
   fi
 
   if [ "$failures" -eq 0 ]; then
