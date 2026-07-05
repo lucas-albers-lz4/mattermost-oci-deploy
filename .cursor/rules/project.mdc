@@ -1,0 +1,39 @@
+---
+description: Mattermost OCI deploy repo — stack context and operator constraints
+alwaysApply: true
+---
+
+# mattermost-oci-deploy
+
+Private Mattermost on OCI Free Tier: OpenTofu → VM → Docker Compose (Postgres, Caddy, Mattermost prod + idle test).
+
+## Sibling project
+
+Community Admin plugin (separate repo): https://github.com/lucas-albers-lz4/mattermost-plugin-community-admin  
+Install on VM: `/opt/mattermost/ops/install-community-admin-plugin.sh` — see `docs/06-operations.md`.
+
+## Test instance
+
+- Script: `scripts/manage-test-instance.sh` (on VM: `/opt/mattermost/ops/manage-test-instance.sh`)
+- Test URL/host in `generated.env` / docs; access IP-restricted via `TEST_ALLOWED_CIDR`
+- Default: test container **stopped** to save RAM — `start` before testing, `stop` when done
+
+## Do not commit
+
+`.env`, `.mattermost-secrets.env`, `generated.env`, `terraform.tfvars`, `*.tfstate*`, keys, backup archives.
+
+## Common commands
+
+```sh
+scripts/deploy-from-zero.sh --fresh
+scripts/security-audit.sh --repo-only
+tofu -chdir=infra/opentofu validate
+```
+
+On VM: `/opt/mattermost/ops/health-check.sh`, `security-audit.sh --host-only`
+
+## Agent defaults
+
+- Minimal diffs; match existing shell/docs style
+- Do not commit or push unless explicitly asked
+- Prefer `docs/` and `README.md` for operator-facing notes over new ad-hoc markdown files
