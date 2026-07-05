@@ -132,3 +132,37 @@ Implications:
 - User onboarding should be manual.
 
 Do not enable email until a real SMTP provider and sender identity are chosen.
+
+## Mobile Push Notifications
+
+Production uses Mattermost Hosted Push Notification Service (HPNS) at `https://global.push.mattermost.com`. Compose sets this via `MM_PUSH_NOTIFICATION_SERVER` in `.env` and `MM_EMAILSETTINGS_PUSHNOTIFICATIONSERVER` on the container.
+
+After deploy or upgrade, run:
+
+```sh
+/opt/mattermost/ops/configure-push-notifications.sh
+```
+
+This enables push, points at HPNS, and sets existing human users to `push=all` (not mentions-only).
+
+Troubleshooting:
+
+```sh
+/opt/mattermost/ops/diagnose-push-notifications.sh
+```
+
+See [`docs/06-operations.md`](06-operations.md#mobile-app-notifications) for parent-facing mobile setup.
+
+## Community Admin plugin (optional)
+
+This stack supports invite-only communities where **organizers** (coaches, team leads) create accounts and reset passwords without System Console access.
+
+Install the plugin from the separate repository after production Mattermost is healthy:
+
+- **Repository:** [lucas-albers-lz4/mattermost-plugin-community-admin](https://github.com/lucas-albers-lz4/mattermost-plugin-community-admin)
+- **Plugin ID:** `com.lalbers.community-admin`
+- **Install on VM:** `/opt/mattermost/ops/install-community-admin-plugin.sh` (see [06-operations.md § Community Admin](06-operations.md#community-admin-plugin-delegated-organizers))
+
+Build the tarball on your workstation (`make dist` in the plugin repo) or download a [GitHub release](https://github.com/lucas-albers-lz4/mattermost-plugin-community-admin/releases) asset, then run the install script on the VM with `PLUGIN_TARBALL_LOCAL` or `PLUGIN_URL`.
+
+Configure organizers in **System Console → Plugins → Community Admin** (site URL, team/channel scope). Production Compose already enables `EnableLocalMode` for password reset.

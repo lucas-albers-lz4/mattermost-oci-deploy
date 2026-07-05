@@ -52,6 +52,16 @@ The script will:
 9. Start the production stack (test instance stays idle by default).
 10. Validate production, run test once, stop test, and run security checks.
 
+### Optional: Community Admin plugin
+
+If organizers need delegated user management (create accounts, reset passwords, team membership) without System Console:
+
+1. Build or download `com.lalbers.community-admin-*.tar.gz` from [mattermost-plugin-community-admin](https://github.com/lucas-albers-lz4/mattermost-plugin-community-admin).
+2. On the VM: `/opt/mattermost/ops/install-community-admin-plugin.sh` with `PLUGIN_TARBALL_LOCAL` or `PLUGIN_URL`.
+3. Configure scope in System Console → Plugins → Community Admin.
+
+Details: [06-operations.md § Community Admin](06-operations.md#community-admin-plugin-delegated-organizers).
+
 ## Restore Deployment
 
 ```sh

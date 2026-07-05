@@ -116,6 +116,9 @@ Messages are stored on the server. The operator does not routinely monitor DMs b
 **What if something goes wrong?**  
 Contact the community administrator. Accounts can be disabled immediately.
 
+**How do phone notifications work?**  
+Install the official **Mattermost** app, add the server URL the administrator gave you, log in, and tap **Allow** when asked about notifications. You will not get lock-screen alerts while actively reading the same chat in the app — background the app to test. Use **Settings → Notifications → Send a test notification** in the app to verify.
+
 **Is group voice the same as turning on video for one user?**  
 No. **Channel voice** needs the Calls feature (plugin + network). **DM video** is a separate server-wide setting. Organizers choose **who is in which channel**; the operator chooses **global** DM/call rules.
 

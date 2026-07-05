@@ -17,6 +17,8 @@ Decide how your community is structured **before** accounts are created:
 
 Fill in the sections below for your community. Do not commit this file with real names or secrets if you fork the repo — keep a private copy.
 
+After planning teams and channels, provision accounts with `/opt/mattermost/ops/manage-community-users.sh` (see [`06-operations.md`](06-operations.md)).
+
 ---
 
 ## 1. Community profile

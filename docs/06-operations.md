@@ -1,155 +1,202 @@
-# 06 - Operations
+## User Accounts
 
-## SSH
+This deployment is invite-only. Use **`manage-community-users.sh`** on the VM to create accounts, assign teams/channels, and print a one-line text message for parents.
 
-```sh
-ssh ubuntu@<vm-public-ip>
-```
-
-## Status
+Run from `/opt/mattermost`:
 
 ```sh
 cd /opt/mattermost
-docker compose --env-file .env -p mattermost -f compose.yml ps
-/opt/mattermost/ops/health-check.sh
-/opt/mattermost/ops/security-audit.sh --host-only
+/opt/mattermost/ops/manage-community-users.sh --help
 ```
 
-## Logs
+### Create a member (single user)
 
 ```sh
-cd /opt/mattermost
-docker compose --env-file .env -p mattermost -f compose.yml logs --tail=200 mattermost-prod
-docker compose --env-file .env -p mattermost -f compose.yml logs --tail=200 mattermost-test
-docker compose --env-file .env -p mattermost -f compose.yml logs --tail=200 postgres
-docker compose --env-file .env -p mattermost -f compose.yml logs --tail=200 caddy
+/opt/mattermost/ops/manage-community-users.sh user create \
+  --username alice.parent \
+  --firstname Alice \
+  --lastname Parent \
+  --team parents \
+  --channel parents:announcements
 ```
 
-Follow logs:
+Output includes:
 
-```sh
-docker compose --env-file .env -p mattermost -f compose.yml logs -f mattermost-prod
-docker compose --env-file .env -p mattermost -f compose.yml logs -f mattermost-test
-```
+1. An operator log line with username and generated password.
+2. A **`TEXT_TO_PARENT:`** line — copy/paste to SMS (site URL from `PROD_HOSTNAME` in `.env`).
 
-## Restart
-
-```sh
-cd /opt/mattermost
-docker compose --env-file .env -p mattermost -f compose.yml restart mattermost-prod caddy
-```
-
-Restart test only when it is running for upgrade validation:
-
-```sh
-/opt/mattermost/ops/manage-test-instance.sh status
-docker compose --env-file .env -p mattermost -f compose.yml --profile upgrade-test restart mattermost-test
-```
-
-## Health Check
-
-Systemd timer:
+Example:
 
 ```text
-mattermost-health.timer
+created user=alice.parent team=parents channels=parents:announcements password=...
+TEXT_TO_PARENT: Your community chat login — https://chat.example.com — username: alice.parent — password: ... — save this message; contact the admin if you need a reset.
 ```
 
-`scripts/bootstrap-host.sh` installs and enables this timer from `templates/systemd/`. It runs the health check 5 minutes after timer activation, then every 15 minutes.
+Options:
 
-Check it:
+- `--password '...'` — set password instead of generating one.
+- `--system-admin` — create a system administrator.
+- `--no-parent-text` — skip the SMS line (e.g. for admin accounts).
+- Multiple `--channel team:slug` flags for several channels.
+
+Password must meet server policy (at least 14 characters with complexity). See [`09-security-hardening.md`](09-security-hardening.md).
+
+**Security:** texting passwords is convenient but not ideal. Prefer in-person handoff when possible. Never commit credential exports.
+
+### Reset a password
 
 ```sh
-systemctl status mattermost-health.timer --no-pager
-journalctl -u mattermost-health.service --no-pager -n 100
+/opt/mattermost/ops/manage-community-users.sh user reset-password alice.parent --generate
 ```
 
-Manual run:
+Emits a new `TEXT_TO_PARENT:` line with the updated password. Email reset does not work without SMTP.
+
+### Batch import (parents and children)
+
+Copy [`templates/community-users.example.csv`](../templates/community-users.example.csv) to a local file (e.g. `community-users.csv` — gitignored). Header:
+
+```csv
+username,firstname,lastname,team,channels,role
+```
+
+- `channels` — semicolon-separated `team:channel` list.
+- `role` — `member` (default) or `admin`.
+
+Dry run:
 
 ```sh
-/opt/mattermost/ops/health-check.sh
+/opt/mattermost/ops/manage-community-users.sh batch import --file community-users.csv --dry-run
 ```
 
-The health check validates:
-
-- Root disk usage
-- Available memory
-- Container running state for production path (`postgres`, `mattermost-prod`, `caddy`)
-- Production public HTTPS
-- Production internal app HTTP
-- Test internal app HTTP **only when** `mattermost-test` is running (skipped when idle)
-
-Test public HTTPS is not checked from the VM because Caddy intentionally restricts test by client IP.
-
-See [`docs/14-performance.md`](14-performance.md) for why the test instance is stopped during normal operation and how to start it for upgrades.
-
-If `ALERT_WEBHOOK_URL` is set in `/opt/mattermost/.env`, health check failures send a JSON webhook:
-
-```json
-{"text":"Mattermost health check failed on <host> with exit <status>"}
-```
-
-Check failed systemd units:
+Import:
 
 ```sh
-systemctl --failed --no-pager
+/opt/mattermost/ops/manage-community-users.sh batch import --file community-users.csv \
+  --credentials-out ./onboarding.credentials.csv
 ```
 
-## Host Updates
+Existing users are skipped; team/channel membership is still applied. One `TEXT_TO_PARENT:` line per newly created user.
 
-Unattended security updates are enabled:
+### Teams and channels
 
 ```sh
-systemctl is-enabled unattended-upgrades.service
-grep -E 'APT::Periodic::Unattended-Upgrade "1"' /etc/apt/apt.conf.d/20auto-upgrades
+/opt/mattermost/ops/manage-community-users.sh team create --name u12-soccer --display-name "U12 Soccer"
+/opt/mattermost/ops/manage-community-users.sh channel create --team u12-soccer --name team-chat \
+  --display-name "Team Chat" --private
+/opt/mattermost/ops/manage-community-users.sh team add-user u12-soccer alice.parent
+/opt/mattermost/ops/manage-community-users.sh channel add-user u12-soccer:team-chat alice.parent
 ```
 
-On OCI Ubuntu, Ksplice is installed during bootstrap when available:
+For community structure planning, see [`community-channel-policy.md`](community-channel-policy.md).
+
+### Raw mmctl (debugging)
+
+If the helper script is unavailable:
 
 ```sh
-command -v uptrack-upgrade
-grep -E '^autoinstall[[:space:]]*=[[:space:]]*yes' /etc/uptrack/uptrack.conf
+docker compose --env-file .env -p mattermost -f compose.yml exec -T -u mattermost mattermost-prod \
+  /mattermost/bin/mmctl --local user create \
+  --email user@example.com \
+  --username username \
+  --password 'ReplaceWithStrongPassword1!' \
+  --firstname First \
+  --lastname Last \
+  --disable-welcome-email \
+  --email-verified
 ```
 
-Ksplice covers supported kernel live patches. Continue to review userspace package, Docker/containerd, image, and Mattermost updates separately.
+See [`docs/10-audio-video-calls.md`](10-audio-video-calls.md) for how `mmctl --local` works.
 
-See [`docs/15-unattended-updates.md`](docs/15-unattended-updates.md) for the full unattended update schedule (Sunday reboot window, Caddy auto-update, Monday update report).
+## Community Admin plugin (delegated organizers)
 
-Check pending package updates:
+For coaches and team leads who should manage users **without** System Console or SSH access,
+install the separate [Community Admin plugin](https://github.com/lucas-albers-lz4/mattermost-plugin-community-admin)
+(`com.lalbers.community-admin`). Source, configuration, and user guide live in that repository.
+
+**Requires** `EnableLocalMode: true` on the Mattermost container (already set in this stack’s Compose template) so password reset can use `mmctl --local`.
+
+### Install
+
+From a local tarball built with `make dist` in the plugin repo:
 
 ```sh
-sudo apt-get update
-apt list --upgradable
+cd /opt/mattermost
+PLUGIN_TARBALL_LOCAL=/path/to/com.lalbers.community-admin-1.0.0.tar.gz \
+  /opt/mattermost/ops/install-community-admin-plugin.sh
 ```
 
-## Firewall
-
-OCI NSG should expose:
-
-- `22/tcp` from admin public IP only
-- `80/tcp` from everywhere
-- `443/tcp` from everywhere
-- `8443/udp` from everywhere if Mattermost Calls is enabled
-- Egress to everywhere
-
-No Docker host port should expose Mattermost directly. Only Caddy publishes public ports.
-
-After confirming key-based SSH in a second terminal, apply host firewall rules:
+From a GitHub release (after you publish a tag, e.g. `v1.0.0`):
 
 ```sh
-sudo ADMIN_ALLOWED_CIDR=<your-admin-ip>/32 /opt/mattermost/ops/harden-host.sh
+cd /opt/mattermost
+COMMUNITY_ADMIN_VERSION=1.0.0 \
+PLUGIN_URL=https://github.com/lucas-albers-lz4/mattermost-plugin-community-admin/releases/download/v1.0.0/com.lalbers.community-admin-1.0.0.tar.gz \
+  /opt/mattermost/ops/install-community-admin-plugin.sh
 ```
 
-For optional SSH hardening, see `docs/09-security-hardening.md`.
+Optional checksum verification:
+
+```sh
+SHA256_FILE=/path/to/SHA256SUMS \
+PLUGIN_URL=... \
+  /opt/mattermost/ops/install-community-admin-plugin.sh
+```
+
+The install script is copied to the VM by `bootstrap-host.sh` as `/opt/mattermost/ops/install-community-admin-plugin.sh`.
+
+### Configure organizers (system admin)
+
+1. System Console → Plugins → Community Admin
+2. Set **Site URL** (production hostname, e.g. `https://chat.example.org`)
+3. Use the scope editor to add organizers by username and assign teams/channels
+4. Save plugin settings
+
+Organizers open **Community Members** from the **channel header** (desktop/web) or use mobile slash commands:
+
+```text
+/community-admin reset-password USERNAME
+/community-admin remove-from-team USERNAME TEAM_NAME
+```
+
+Break-glass provisioning remains [`manage-community-users.sh`](#create-a-member-single-user) for the operator.
+
+## Mobile app notifications
+
+Mattermost mobile apps need three things to deliver lock-screen notifications:
+
+1. **Server push proxy** — HPNS at `https://global.push.mattermost.com` (configured in Compose and `configure-push-notifications.sh`).
+2. **User preference** — `push=all`, not mentions-only. New users created via `manage-community-users.sh` get this automatically; run `configure-push-notifications.sh` after deploy to fix existing accounts.
+3. **Device registration** — each phone must log in once, allow notifications when iOS/Android prompts, and keep the official Mattermost app from the App Store / Play Store.
+
+### Operator checklist
+
+```sh
+# Apply server + user defaults (idempotent)
+/opt/mattermost/ops/configure-push-notifications.sh
+
+# Inspect config, device registrations, and connectivity
+/opt/mattermost/ops/diagnose-push-notifications.sh
+```
+
+After changing Compose push env vars, recreate the container:
+
+```sh
+cd /opt/mattermost
+docker compose --env-file .env -p mattermost -f compose.yml up -d mattermost-prod
+```
+
+### What to tell parents
+
+Share these steps when onboarding mobile users:
+
+1. Install **Mattermost** from the App Store (iOS) or Google Play (Android) — not a third-party client.
+2. Open the app → **Add a server** → enter `https://<PROD_HOSTNAME>` (from `.env`).
+3. Log in with the username and password you provided.
+4. When prompted, tap **Allow** for notifications.
+5. To verify: Settings → **Notifications** → **Send a test notification** (app must be backgrounded to see the lock-screen banner).
+
+**Note:** Notifications are not sent while you are actively viewing the same channel in the app. Background the app or switch channels to test.
+
+If iOS still does not notify, check **Settings → Notifications → Mattermost** on the phone and confirm alerts are enabled.
 
 ## No-Email Operating Mode
-
-SMTP is intentionally disabled.
-
-Operational impact:
-
-- Password reset emails do not work.
-- Email invitations do not work.
-- Admin intervention is required for account recovery.
-- Keep at least one admin account accessible.
-
-If email is enabled later, configure and test SMTP separately for production and test.
