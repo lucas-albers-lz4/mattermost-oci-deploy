@@ -1,0 +1,3 @@
+username,firstname,lastname,team,channels,role
+parent.example,Jane,Example,parents,parents:announcements;u12-soccer:team-chat,member
+child.example,Sam,Example,u12-soccer,u12-soccer:team-chat,member
