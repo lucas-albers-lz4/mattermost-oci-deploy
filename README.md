@@ -15,6 +15,7 @@ Private, self-hosted Mattermost on Oracle Cloud Infrastructure Always Free resou
 - Mattermost Calls over UDP `8443`; Bleve search (no Elasticsearch).
 - Daily backups, restore drills, health checks, and security audit scripts.
 - Host hardening: UFW, Fail2ban, SSH restrictions, unattended OS security updates, Caddy auto-update, optional alert webhooks.
+- Optional [**Community Admin**](https://github.com/lucas-albers-lz4/mattermost-plugin-community-admin) plugin (`com.lalbers.community-admin`) for delegated organizer user management — see [Operations § Community Admin](docs/06-operations.md#community-admin-plugin-delegated-organizers).
 
 ## Limitations
 
@@ -60,6 +61,8 @@ scripts/deploy-from-zero.sh --restore <backup-timestamp>
 The deploy script prints the VM public IP and pauses for manual DNS. After DNS points to the new VM, continue to bootstrap, build the image, start or restore Mattermost, and validate.
 
 Full workflow: [docs/11-reproducible-deployment.md](docs/11-reproducible-deployment.md).
+
+After Mattermost is running, install the optional [Community Admin plugin](https://github.com/lucas-albers-lz4/mattermost-plugin-community-admin) if organizers need to create users and reset passwords without System Console access: [docs/06-operations.md](docs/06-operations.md#community-admin-plugin-delegated-organizers).
 
 ## Documentation
 
