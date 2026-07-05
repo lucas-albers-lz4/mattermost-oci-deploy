@@ -25,9 +25,12 @@ backups/
 .DS_Store
 .idea/
 .vscode/
-.cursor/
 *.swp
 .ssh-known-hosts
+
+# Cursor IDE (commit .cursor/rules/; ignore debug logs and local cache)
+.cursor/debug-*.log
+.cursor/**/*.log
 
 # Runtime output
 logs/
