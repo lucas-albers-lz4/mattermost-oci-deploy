@@ -10,7 +10,7 @@ Private, self-hosted Mattermost on Oracle Cloud Infrastructure Always Free resou
 
 ## What you get
 
-- OCI `VM.Standard.A1.Flex` compute, VCN, NSG, and private Object Storage bucket for backups (~$0 on Always Free; see OCI terms and your usage).
+- OCI `VM.Standard.A1.Flex` compute, VCN, NSG, private Object Storage for backups and Mattermost file attachments (~$0 on Always Free; see OCI terms and your usage; ~20 GB Object Storage shared across buckets).
 - Docker Compose: PostgreSQL 16, Mattermost production + test, Caddy with automatic TLS.
 - Mattermost Calls over UDP `8443`; Bleve search (no Elasticsearch).
 - Daily backups, restore drills, health checks, and security audit scripts.
@@ -70,7 +70,7 @@ Complete index by audience: [docs/README.md](docs/README.md).
 
 ## Security
 
-Default posture: SSH from admin CIDR only, UFW, internal Postgres, Caddy as sole HTTP/TLS entry, instance-principal backups. See [docs/09-security-hardening.md](docs/09-security-hardening.md) and [docs/12-security-audits.md](docs/12-security-audits.md).
+Default posture: SSH from admin CIDR only, UFW, internal Postgres, Caddy as sole HTTP/TLS entry, instance-principal backups and filestore (rclone S3 proxy). See [docs/09-security-hardening.md](docs/09-security-hardening.md) and [docs/12-security-audits.md](docs/12-security-audits.md).
 
 ## Performance and maintenance
 

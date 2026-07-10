@@ -7,7 +7,7 @@ Start here based on your role.
 | Audience | Start here |
 |----------|------------|
 | Parents and families | [for-parents.md](for-parents.md) |
-| Community organizers / admins | [community-channel-policy.md](community-channel-policy.md) · [for-parents.md](for-parents.md) · [Community Admin plugin](https://github.com/lucas-albers-lz4/mattermost-plugin-community-admin) (install: [06-operations.md § Community Admin](06-operations.md#community-admin-plugin-delegated-organizers)) |
+| Community organizers / admins | [community-channel-policy.md](community-channel-policy.md) · [for-parents.md](for-parents.md) · [Community Admin plugin user guide](https://github.com/lucas-albers-lz4/mattermost-plugin-community-admin/blob/main/docs/user-guide.md) (screenshots: [images/community-admin/](images/community-admin/)) · install: [06-operations.md § Community Admin](06-operations.md#community-admin-plugin-delegated-organizers) |
 | New deployment | [11-reproducible-deployment.md](11-reproducible-deployment.md) · [01-oci-account-and-cli.md](01-oci-account-and-cli.md) |
 | Day-2 operations | [06-operations.md](06-operations.md) · [07-upgrades.md](07-upgrades.md) · [15-unattended-updates.md](15-unattended-updates.md) |
 | Security review | [09-security-hardening.md](09-security-hardening.md) · [12-security-audits.md](12-security-audits.md) |

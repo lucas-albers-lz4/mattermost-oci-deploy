@@ -83,6 +83,12 @@ variable "backup_bucket_name" {
   default     = "mattermost-backups"
 }
 
+variable "file_bucket_name" {
+  description = "Object Storage bucket for Mattermost file attachments (S3-compatible API)."
+  type        = string
+  default     = "mattermost-files"
+}
+
 variable "backup_retention_days" {
   description = "Object Storage daily/ backup retention."
   type        = number

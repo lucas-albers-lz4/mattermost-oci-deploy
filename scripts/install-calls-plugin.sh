@@ -19,6 +19,8 @@ if compose exec -T mattermost-prod /mattermost/bin/mmctl --local plugin list 2>/
   exit 0
 fi
 
+with_plugin_uploads_enabled
+
 echo "[install-calls] downloading ${PLUGIN_URL}"
 compose exec -T mattermost-prod curl -fsSL "$PLUGIN_URL" -o "$PLUGIN_TARBALL"
 

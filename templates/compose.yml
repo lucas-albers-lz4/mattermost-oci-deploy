@@ -1,4 +1,27 @@
 services:
+  # Local S3 API in front of private OCI bucket mattermost-files (rclone + instance principal).
+  filestore-s3:
+    image: rclone/rclone:1.69
+    restart: unless-stopped
+    init: true
+    security_opt:
+      - no-new-privileges:true
+    command:
+      - serve
+      - s3
+      - "oci-files:"
+      - --addr
+      - ":9000"
+      - --auth-key
+      - ${MM_FILESETTINGS_AMAZONS3ACCESSKEYID},${MM_FILESETTINGS_AMAZONS3SECRETACCESSKEY}
+      - --vfs-cache-mode
+      - full
+      - --vfs-cache-max-size
+      - 2G
+    volumes:
+      - ./rclone/rclone.conf:/config/rclone/rclone.conf:ro
+    mem_limit: 256m
+
   # Postgres tuning targets a 12 GB / 2 OCPU free-tier host. See docs/14-performance.md.
   postgres:
     image: postgres:16-alpine
@@ -54,6 +77,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      filestore-s3:
+        condition: service_started
     environment:
       GOMAXPROCS: "2"
       GOMEMLIMIT: 3750MiB
@@ -64,6 +89,17 @@ services:
       MM_SQLSETTINGS_MAXOPENCONNS: "25"
       MM_SQLSETTINGS_MAXIDLECONNS: "10"
       MM_FILESETTINGS_DIRECTORY: /mattermost/data/
+      MM_FILESETTINGS_DRIVERNAME: ${MM_FILESETTINGS_DRIVERNAME:-amazons3}
+      MM_FILESETTINGS_MAXFILESIZE: ${MM_FILESETTINGS_MAXFILESIZE:-52428800}
+      MM_FILESETTINGS_ENABLEFILEATTACHMENTS: ${MM_FILESETTINGS_ENABLEFILEATTACHMENTS:-true}
+      MM_FILESETTINGS_AMAZONS3BUCKET: ${MM_FILESETTINGS_AMAZONS3BUCKET}
+      MM_FILESETTINGS_AMAZONS3ENDPOINT: ${MM_FILESETTINGS_AMAZONS3ENDPOINT:-filestore-s3:9000}
+      MM_FILESETTINGS_AMAZONS3REGION: ${MM_FILESETTINGS_AMAZONS3REGION}
+      MM_FILESETTINGS_AMAZONS3ACCESSKEYID: ${MM_FILESETTINGS_AMAZONS3ACCESSKEYID}
+      MM_FILESETTINGS_AMAZONS3SECRETACCESSKEY: ${MM_FILESETTINGS_AMAZONS3SECRETACCESSKEY}
+      MM_FILESETTINGS_AMAZONS3PATHPREFIX: prod/
+      MM_FILESETTINGS_AMAZONS3SSL: ${MM_FILESETTINGS_AMAZONS3SSL:-false}
+      MM_FILESETTINGS_AMAZONS3SSE: ${MM_FILESETTINGS_AMAZONS3SSE:-false}
       MM_PLUGINSETTINGS_DIRECTORY: /mattermost/plugins/
       MM_PLUGINSETTINGS_CLIENTDIRECTORY: /mattermost/client/plugins/
       MM_BLEVESETTINGS_INDEXDIR: /mattermost/bleve-indexes
@@ -81,7 +117,7 @@ services:
       MM_PASSWORDSETTINGS_NUMBER: "true"
       MM_PASSWORDSETTINGS_SYMBOL: "true"
       MM_SERVICESETTINGS_ENABLELOCALMODE: "true"
-      MM_PLUGINSETTINGS_ENABLEUPLOADS: "false"
+      MM_PLUGINSETTINGS_ENABLEUPLOADS: ${MM_PLUGINSETTINGS_ENABLEUPLOADS:-false}
       MM_EMAILSETTINGS_SENDPUSHNOTIFICATIONS: "true"
       MM_EMAILSETTINGS_PUSHNOTIFICATIONSERVER: ${MM_PUSH_NOTIFICATION_SERVER:-https://global.push.mattermost.com}
     volumes:
@@ -107,6 +143,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      filestore-s3:
+        condition: service_started
     environment:
       GOMAXPROCS: "1"
       GOMEMLIMIT: 1800MiB
@@ -115,6 +153,17 @@ services:
       MM_SQLSETTINGS_DRIVERNAME: postgres
       MM_SQLSETTINGS_DATASOURCE: postgres://${MM_TEST_DB_USER}:${MM_TEST_DB_PASSWORD}@postgres:5432/${MM_TEST_DB_NAME}?sslmode=disable&connect_timeout=10
       MM_FILESETTINGS_DIRECTORY: /mattermost/data/
+      MM_FILESETTINGS_DRIVERNAME: ${MM_FILESETTINGS_DRIVERNAME:-amazons3}
+      MM_FILESETTINGS_MAXFILESIZE: ${MM_FILESETTINGS_MAXFILESIZE:-52428800}
+      MM_FILESETTINGS_ENABLEFILEATTACHMENTS: ${MM_FILESETTINGS_ENABLEFILEATTACHMENTS:-true}
+      MM_FILESETTINGS_AMAZONS3BUCKET: ${MM_FILESETTINGS_AMAZONS3BUCKET}
+      MM_FILESETTINGS_AMAZONS3ENDPOINT: ${MM_FILESETTINGS_AMAZONS3ENDPOINT:-filestore-s3:9000}
+      MM_FILESETTINGS_AMAZONS3REGION: ${MM_FILESETTINGS_AMAZONS3REGION}
+      MM_FILESETTINGS_AMAZONS3ACCESSKEYID: ${MM_FILESETTINGS_AMAZONS3ACCESSKEYID}
+      MM_FILESETTINGS_AMAZONS3SECRETACCESSKEY: ${MM_FILESETTINGS_AMAZONS3SECRETACCESSKEY}
+      MM_FILESETTINGS_AMAZONS3PATHPREFIX: test/
+      MM_FILESETTINGS_AMAZONS3SSL: ${MM_FILESETTINGS_AMAZONS3SSL:-false}
+      MM_FILESETTINGS_AMAZONS3SSE: ${MM_FILESETTINGS_AMAZONS3SSE:-false}
       MM_PLUGINSETTINGS_DIRECTORY: /mattermost/plugins/
       MM_PLUGINSETTINGS_CLIENTDIRECTORY: /mattermost/client/plugins/
       MM_BLEVESETTINGS_INDEXDIR: /mattermost/bleve-indexes

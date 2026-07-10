@@ -12,6 +12,8 @@ Back up all state needed to recover Mattermost:
 - Compose file and Caddyfile snapshot
 - SHA256 checksums
 
+Live message **attachments** are stored in the private Object Storage bucket `mattermost-files` (S3-compatible Mattermost filestore), not as the critical content of the `prod-data` / `test-data` volume tarballs. Daily backups do **not** duplicate that filestore into `mattermost-backups` (Always Free Object Storage is shared, about 20 GB total). Rely on Object Storage durability for attachments; continue DB + config volume backups as above. Optional later hardening: Object Storage versioning on `mattermost-files`.
+
 ## Backup Destination
 
 Local short-term copies:

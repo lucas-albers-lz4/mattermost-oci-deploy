@@ -75,6 +75,20 @@ Community shape is **team- and channel-based**, not per-user “turn audio on fo
 4. Email password reset is off — the admin helps with lockouts.
 5. Multi-factor authentication may be added later for adults.
 
+### How your coach adds you
+
+Community coaches and team leads can add members through the **Community Members** panel in Mattermost (no technical skills required):
+
+![Where coaches open the Community Members panel](images/community-admin/01-channel-header.png)
+
+*Look for the **Community Members** button in the channel header (users icon), or in the product menu on some editions.*
+
+![Credential message coaches copy and send privately](images/community-admin/05-credentials-create.png)
+
+*After creating an account, the coach copies the login details and sends them to you privately — not in a public channel.*
+
+Full step-by-step guide with more screenshots: [Community Admin user guide](https://github.com/lucas-albers-lz4/mattermost-plugin-community-admin/blob/main/docs/user-guide.md).
+
 ---
 
 ## What this platform is **not**

@@ -19,14 +19,17 @@ Bleve search and Postgres major/minor upgrades stay manual to avoid surprise sch
 
 ## Weekly schedule (UTC)
 
+All timer times are **UTC**, not local time. Example for US Mountain (UTC-6): Sunday 04:00 UTC = Saturday 10:00 PM local.
+
 | When | Action |
 | --- | --- |
 | Daily | `unattended-upgrades`, Ksplice autoinstall |
 | Daily 08:15 (+ jitter) | Backup timer |
 | Every 15 min | Health check |
-| **Sun 04:00** | Reboot if kernel update requires it |
-| **Sun 05:00** | Auto-update **Caddy** only |
-| **Mon 09:00** | Update report (stdout + optional webhook) |
+| **Sun 04:00 UTC** | Reboot if kernel update requires it |
+| **Sun 05:00 UTC** | Auto-update **Caddy** only |
+| **Sun 06:00 UTC** | Post-maintenance summary webhook (optional; `ALERT_WEBHOOK_MAINTENANCE=true`) |
+| **Mon 09:00 UTC** | Update report (stdout + optional webhook) |
 
 ## Ops scripts
 
@@ -36,6 +39,7 @@ On the VM under `/opt/mattermost/ops/`:
 /opt/mattermost/ops/scheduled-reboot.sh   # normally run by timer only
 /opt/mattermost/ops/upgrade-caddy.sh      # pull, validate, recreate caddy
 /opt/mattermost/ops/check-updates.sh      # notify-only summary
+/opt/mattermost/ops/post-maintenance-report.sh  # Sunday summary after reboot + Caddy
 ```
 
 ## Systemd timers
@@ -49,6 +53,7 @@ systemctl list-timers 'mattermost-*'
 | `mattermost-reboot.timer` | Scheduled reboot window |
 | `mattermost-caddy-update.timer` | Caddy image refresh |
 | `mattermost-update-check.timer` | Weekly pending-update report |
+| `mattermost-post-maintenance.timer` | Sunday post-reboot/Caddy summary |
 | `mattermost-backup.timer` | Daily backups |
 | `mattermost-health.timer` | Health checks |
 
@@ -64,6 +69,12 @@ Set `ALERT_WEBHOOK_URL` in `/opt/mattermost/.env` to receive JSON webhooks when:
 
 - Caddy auto-update fails
 - Weekly update check finds pending reboot, Docker, Postgres, or Mattermost updates
+
+Set `ALERT_WEBHOOK_MAINTENANCE=true` (with `ALERT_WEBHOOK_URL`) for optional **success** webhooks after Sunday maintenance:
+
+- Scheduled reboot skipped or initiating
+- Caddy auto-update unchanged or updated
+- Post-maintenance summary (Sunday 06:00 UTC)
 
 Health and backup failures use the same webhook (see [`06-operations.md`](06-operations.md)).
 
@@ -93,6 +104,7 @@ See [`templates/env.example`](../templates/env.example) for the placeholder form
 sudo systemctl disable --now mattermost-caddy-update.timer
 sudo systemctl disable --now mattermost-reboot.timer
 sudo systemctl disable --now mattermost-update-check.timer
+sudo systemctl disable --now mattermost-post-maintenance.timer
 ```
 
 Re-enable with `sudo systemctl enable --now <timer>`.

@@ -11,4 +11,5 @@ test_hostname = "chat-test.example.com"
 name_prefix               = "mattermost"
 availability_domain_index = 0
 backup_bucket_name        = "mattermost-backups"
+file_bucket_name          = "mattermost-files"
 backup_retention_days     = 60

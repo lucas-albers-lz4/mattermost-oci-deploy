@@ -196,9 +196,14 @@ host_audit() {
     if systemctl is-enabled --quiet "$timer" 2>/dev/null && systemctl is-active --quiet "$timer"; then
       pass "$timer active"
     else
-      warn "$timer inactive or not enabled"
+      fail "$timer inactive or not enabled"
     fi
   done
+  if systemctl is-enabled --quiet mattermost-post-maintenance.timer 2>/dev/null && systemctl is-active --quiet mattermost-post-maintenance.timer; then
+    pass "mattermost-post-maintenance.timer active"
+  else
+    warn "mattermost-post-maintenance.timer inactive or not enabled"
+  fi
 
   if have docker && declare -F compose >/dev/null 2>&1; then
     compose ps >/tmp/mattermost-compose-ps.txt

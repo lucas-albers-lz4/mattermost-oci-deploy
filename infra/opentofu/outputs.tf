@@ -13,9 +13,24 @@ output "backup_bucket_name" {
   value       = oci_objectstorage_bucket.backups.name
 }
 
+output "file_bucket_name" {
+  description = "Object Storage bucket used for Mattermost file attachments."
+  value       = oci_objectstorage_bucket.files.name
+}
+
 output "object_storage_namespace" {
   description = "Object Storage namespace."
   value       = data.oci_objectstorage_namespace.this.namespace
+}
+
+output "file_s3_region" {
+  description = "OCI region identifier for the filestore bucket / rclone remote."
+  value       = var.region
+}
+
+output "compartment_ocid" {
+  description = "Compartment OCID for Object Storage resources (rclone config)."
+  value       = var.compartment_ocid
 }
 
 output "prod_hostname" {

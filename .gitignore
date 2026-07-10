@@ -3,6 +3,7 @@
 .mattermost-secrets.env
 generated.env
 *.env.local
+**/rclone/rclone.conf
 *.pem
 *.key
 *.p12

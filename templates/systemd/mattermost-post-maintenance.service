@@ -1,0 +1,9 @@
+[Unit]
+Description=Post-Sunday maintenance summary webhook
+Wants=network-online.target
+After=mattermost-reboot.service mattermost-caddy-update.service network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/mattermost
+ExecStart=/opt/mattermost/ops/post-maintenance-report.sh

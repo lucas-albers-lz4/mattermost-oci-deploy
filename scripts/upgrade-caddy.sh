@@ -28,6 +28,7 @@ compose pull caddy
 new_id=$(docker image inspect "$CADDY_IMAGE" --format '{{.Id}}')
 if [ -n "$old_id" ] && [ "$old_id" = "$new_id" ]; then
   echo "$LOG_PREFIX image unchanged ($new_id)"
+  notify_maintenance "Caddy auto-update: image unchanged"
   exit 0
 fi
 
@@ -40,3 +41,4 @@ prod_public=$(curl -L -s -o /dev/null -w '%{http_code}' --max-time 20 "https://$
 [ "$prod_public" = "200" ] || die "production endpoint returned $prod_public after Caddy update"
 
 echo "$LOG_PREFIX OK prod_public=${prod_public} image=$new_id"
+notify_maintenance "Caddy auto-update: image updated; prod_public=${prod_public}"

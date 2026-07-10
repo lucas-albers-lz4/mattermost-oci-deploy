@@ -8,8 +8,9 @@ One OCI Always Free ARM VM runs Docker Compose:
 - Mattermost production container
 - Mattermost test container
 - Shared PostgreSQL container with separate prod/test databases
-- Docker named volumes for persistent state
-- OCI Object Storage bucket for off-VM backups
+- Docker named volumes for persistent state (config, plugins, Bleve, local fallback paths)
+- OCI Object Storage bucket for live Mattermost file attachments (`mattermost-files`)
+- OCI Object Storage bucket for off-VM backups (`mattermost-backups`)
 
 ## OCI Free Tier Guardrails
 
@@ -59,29 +60,46 @@ After SSH is verified, apply the host firewall and SSH hardening steps in `docs/
 
 ## Object Storage
 
-Create bucket:
+Two private buckets (defaults):
 
 ```text
-mattermost-backups
+mattermost-backups   # daily backup archives (lifecycle expires daily/)
+mattermost-files     # live Mattermost attachments (S3-compatible API; no expire lifecycle)
 ```
 
-Use private access only.
+Always Free Object Storage is about **20 GB total** across all buckets. Monitor usage; do not copy the filestore into the backup bucket every day.
 
-The deployment uses an instance principal:
+### Backups bucket (instance principal)
 
-- Dynamic group: `MattermostBackupWriters`
+- Dynamic group: `mattermost-backup-writers` (display name uses `name_prefix`)
 - Matching rule: target VM instance OCID
-- Policy: allow the dynamic group to manage Object Storage objects in the `mattermost` compartment
+- Policy: bucket-scoped read/manage objects on `mattermost-backups` only
 
 Policy shape:
 
 ```text
-Allow dynamic-group MattermostBackupWriters to manage object-family in compartment mattermost
+Allow dynamic-group mattermost-backup-writers to read buckets in compartment id <compartment>
+  where target.bucket.name='mattermost-backups'
+Allow dynamic-group mattermost-backup-writers to manage objects in compartment id <compartment>
+  where target.bucket.name='mattermost-backups'
 ```
 
 This lets the VM upload backups without placing your user API private key on the host.
 
 Also configure lifecycle retention for the `daily/` backup prefix and keep the bucket private. See `docs/09-security-hardening.md` for the security checklist.
+
+### Files bucket (Mattermost via local S3 proxy)
+
+Mattermost uses the `amazons3` driver against an on-VM **rclone** S3 proxy (`filestore-s3` Compose service). rclone talks to the private `mattermost-files` bucket with the VM **instance principal** (same dynamic group as backups, separate bucket-scoped policy).
+
+`scripts/render-env.sh` generates local proxy access keys (stored in `.mattermost-secrets.env`) and sets:
+
+- `MM_FILESETTINGS_DRIVERNAME=amazons3`
+- `MM_FILESETTINGS_AMAZONS3ENDPOINT=filestore-s3:9000` (TLS off on the internal proxy)
+- `MM_FILESETTINGS_MAXFILESIZE=52428800` (50 MiB)
+- Path prefixes in Compose: `prod/` and `test/`
+
+Keep the files bucket private. Do not create public PARs for attachments.
 
 ## Capacity Notes
 

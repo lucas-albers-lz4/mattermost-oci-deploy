@@ -26,6 +26,8 @@ if compose exec -T mattermost-prod /mattermost/bin/mmctl --local plugin list 2>/
   exit 0
 fi
 
+with_plugin_uploads_enabled
+
 if [ -n "$PLUGIN_TARBALL_LOCAL" ]; then
   [ -f "$PLUGIN_TARBALL_LOCAL" ] || die "local plugin tarball not found: $PLUGIN_TARBALL_LOCAL"
   echo "[install-community-admin] using local tarball ${PLUGIN_TARBALL_LOCAL}"

@@ -153,6 +153,10 @@ The install script is copied to the VM by `bootstrap-host.sh` as `/opt/mattermos
 
 Organizers open **Community Members** from the **channel header** (desktop/web) or use mobile slash commands:
 
+![Community Members panel — delegated organizer view](images/community-admin/02-panel-list.png)
+
+Illustrated organizer guide: [plugin user guide](https://github.com/lucas-albers-lz4/mattermost-plugin-community-admin/blob/main/docs/user-guide.md) (screenshots also in this repo under `docs/images/community-admin/`).
+
 ```text
 /community-admin reset-password USERNAME
 /community-admin remove-from-team USERNAME TEAM_NAME

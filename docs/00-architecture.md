@@ -4,12 +4,13 @@ This deployment is designed for a small Mattermost installation on OCI Free Tier
 
 ## Components
 
-- OCI OpenTofu stack provisions networking, compute, Object Storage, dynamic group, and IAM policy.
+- OCI OpenTofu stack provisions networking, compute, Object Storage buckets, dynamic group, and IAM policies.
 - Ubuntu 24.04 ARM64 VM runs Docker Engine and the Docker Compose plugin.
 - Docker Compose starts PostgreSQL, Mattermost production, Mattermost test, and Caddy.
 - Caddy terminates TLS, routes production traffic, and restricts test traffic by source CIDR.
 - Mattermost is built locally from the official ARM64 release tarball.
-- OCI Object Storage stores backup snapshots under `daily/<timestamp>/`.
+- OCI Object Storage bucket `mattermost-files` stores live Mattermost attachments (via on-VM rclone S3 proxy + instance principal).
+- OCI Object Storage bucket `mattermost-backups` stores backup snapshots under `daily/<timestamp>/`.
 - Systemd timers run backup and health checks.
 
 ## Data Flow
@@ -21,9 +22,12 @@ flowchart TD
   caddy --> testApp["Mattermost Test"]
   prodApp --> postgres["PostgreSQL"]
   testApp --> postgres
+  prodApp --> filesProxy["rclone S3 proxy"]
+  testApp --> filesProxy
+  filesProxy --> filesBucket["OCI Object Storage files"]
   backupTimer["Backup Timer"] --> backupScript["Backup Script"]
   backupScript --> postgres
-  backupScript --> objectStorage["OCI Object Storage"]
+  backupScript --> backupBucket["OCI Object Storage backups"]
 ```
 
 ## Network Boundaries

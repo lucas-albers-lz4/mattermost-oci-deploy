@@ -114,6 +114,7 @@ scripts/security-audit.sh --repo-only
 - `availability_domain_index` is configurable because A1 Flex capacity can vary by availability domain.
 - An existing backup bucket can be preserved by importing `oci_objectstorage_bucket.backups` before `tofu apply`.
 - Object Storage lifecycle rules need a tenancy policy for `service objectstorage-<region>` to manage objects in the backup compartment.
+- Mattermost filestore uses private bucket `mattermost-files` plus an on-VM rclone S3 proxy (instance principal); `scripts/render-env.sh` requires Object Storage namespace and compartment outputs.
 - Restore-from-zero skips the pre-restore production backup because a fresh VM has no prior running stack to back up.
 - Restore scripts create/update Mattermost database roles before recreating databases so fresh Postgres volumes restore cleanly.
 - Container entrypoint and Postgres init scripts must be executable by non-root container users.

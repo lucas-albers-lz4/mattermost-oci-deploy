@@ -1,0 +1,10 @@
+[Unit]
+Description=Post-maintenance report on Sunday 06:00 UTC
+
+[Timer]
+OnCalendar=Sun *-*-* 06:00:00 UTC
+Persistent=true
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

@@ -68,7 +68,7 @@ See also [`templates/postgres/README.md`](../templates/postgres/README.md).
 
 ### Disk I/O
 
-Postgres data, Bleve indexes, uploads, and backups share the boot volume. If you see sustained slow queries or high I/O wait under normal load, **move `postgres-data` to a dedicated OCI block volume** before chasing CPU optimizations.
+Postgres data, Bleve indexes, and local backup staging share the boot volume. Live Mattermost attachments use the OCI Object Storage `mattermost-files` bucket (S3 driver), so upload growth should not fill the boot volume. If you see sustained slow queries or high I/O wait under normal load, **move `postgres-data` to a dedicated OCI block volume** before chasing CPU optimizations.
 
 ## Mattermost production runtime
 

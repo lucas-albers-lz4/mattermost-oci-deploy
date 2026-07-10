@@ -87,7 +87,7 @@ EOF
   fi
 fi
 
-sudo mkdir -p "$APP_DIR"/{caddy,mattermost-arm64,postgres/init,ops/lib,backups}
+sudo mkdir -p "$APP_DIR"/{caddy,mattermost-arm64,postgres/init,ops/lib,backups,rclone}
 sudo chown -R ubuntu:ubuntu "$APP_DIR"
 
 if [ "$COPY_ASSETS" = "true" ]; then
@@ -96,6 +96,7 @@ if [ "$COPY_ASSETS" = "true" ]; then
   cp "$REPO_DIR/templates/mattermost-arm64.Dockerfile" "$APP_DIR/mattermost-arm64/Dockerfile"
   cp "$REPO_DIR/templates/mattermost-entrypoint.sh" "$APP_DIR/mattermost-arm64/entrypoint.sh"
   cp "$REPO_DIR/templates/postgres-init.sh" "$APP_DIR/postgres/init/001-create-mattermost-dbs.sh"
+  cp "$REPO_DIR/templates/rclone/rclone.conf.tpl" "$APP_DIR/rclone/rclone.conf.tpl"
   cp "$REPO_DIR/scripts/backup-mattermost.sh" "$APP_DIR/ops/backup-mattermost.sh"
   cp "$REPO_DIR/scripts/download-backup.sh" "$APP_DIR/ops/download-backup.sh"
   cp "$REPO_DIR/scripts/restore-test-from-backup.sh" "$APP_DIR/ops/restore-test-from-backup.sh"
@@ -111,9 +112,11 @@ if [ "$COPY_ASSETS" = "true" ]; then
   cp "$REPO_DIR/scripts/scheduled-reboot.sh" "$APP_DIR/ops/scheduled-reboot.sh"
   cp "$REPO_DIR/scripts/upgrade-caddy.sh" "$APP_DIR/ops/upgrade-caddy.sh"
   cp "$REPO_DIR/scripts/check-updates.sh" "$APP_DIR/ops/check-updates.sh"
+  cp "$REPO_DIR/scripts/post-maintenance-report.sh" "$APP_DIR/ops/post-maintenance-report.sh"
   cp "$REPO_DIR/scripts/manage-community-users.sh" "$APP_DIR/ops/manage-community-users.sh"
   cp "$REPO_DIR/scripts/configure-push-notifications.sh" "$APP_DIR/ops/configure-push-notifications.sh"
   cp "$REPO_DIR/scripts/diagnose-push-notifications.sh" "$APP_DIR/ops/diagnose-push-notifications.sh"
+  cp "$REPO_DIR/scripts/render-rclone-config.sh" "$APP_DIR/ops/render-rclone-config.sh"
   cp "$REPO_DIR/templates/postgres/README.md" "$APP_DIR/postgres/README.md"
   cp "$REPO_DIR/scripts/lib/common.sh" "$APP_DIR/ops/lib/common.sh"
   cp "$REPO_DIR/templates/sshd/99-mattermost-hardening.conf" "$APP_DIR/ops/99-mattermost-hardening.conf"
@@ -127,13 +130,20 @@ if [ ! -f "$APP_DIR/.env" ]; then
   echo "Created $APP_DIR/.env from template. Edit it before starting the stack."
 fi
 
+if [ -f "$APP_DIR/.env" ] && [ -f "$APP_DIR/ops/render-rclone-config.sh" ]; then
+  if grep -q '^OBJECT_STORAGE_NAMESPACE=' "$APP_DIR/.env" && grep -q '^COMPARTMENT_OCID=' "$APP_DIR/.env"; then
+    APP_DIR="$APP_DIR" "$APP_DIR/ops/render-rclone-config.sh" || true
+  fi
+fi
+
 if [ "$INSTALL_TIMERS" = "true" ]; then
   for unit in \
     mattermost-backup.service mattermost-backup.timer \
     mattermost-health.service mattermost-health.timer \
     mattermost-reboot.service mattermost-reboot.timer \
     mattermost-caddy-update.service mattermost-caddy-update.timer \
-    mattermost-update-check.service mattermost-update-check.timer; do
+    mattermost-update-check.service mattermost-update-check.timer \
+    mattermost-post-maintenance.service mattermost-post-maintenance.timer; do
     sudo install -m 0644 "$REPO_DIR/templates/systemd/$unit" "/etc/systemd/system/$unit"
   done
   sudo systemctl daemon-reload
@@ -142,7 +152,8 @@ if [ "$INSTALL_TIMERS" = "true" ]; then
     mattermost-health.timer \
     mattermost-reboot.timer \
     mattermost-caddy-update.timer \
-    mattermost-update-check.timer
+    mattermost-update-check.timer \
+    mattermost-post-maintenance.timer
 fi
 
 if [ -f "$REPO_DIR/templates/apt/50unattended-upgrades-mattermost" ]; then

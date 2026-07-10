@@ -187,6 +187,14 @@ resource "oci_objectstorage_bucket" "backups" {
   storage_tier   = "Standard"
 }
 
+resource "oci_objectstorage_bucket" "files" {
+  compartment_id = var.compartment_ocid
+  namespace      = data.oci_objectstorage_namespace.this.namespace
+  name           = var.file_bucket_name
+  access_type    = "NoPublicAccess"
+  storage_tier   = "Standard"
+}
+
 resource "oci_objectstorage_object_lifecycle_policy" "backups" {
   namespace = data.oci_objectstorage_namespace.this.namespace
   bucket    = oci_objectstorage_bucket.backups.name
@@ -220,16 +228,29 @@ resource "oci_identity_policy" "object_lifecycle_service" {
 resource "oci_identity_dynamic_group" "backup_writers" {
   compartment_id = var.tenancy_ocid
   name           = "${var.name_prefix}-backup-writers"
-  description    = "Mattermost VM instance principal for backup uploads"
+  description    = "Mattermost VM instance principal for backup and filestore Object Storage access"
   matching_rule  = "instance.id = '${oci_core_instance.mattermost.id}'"
 }
 
 resource "oci_identity_policy" "backup_writers" {
   compartment_id = var.tenancy_ocid
   name           = "${var.name_prefix}-backup-writers"
-  description    = "Allow Mattermost instance to manage backup objects"
+  description    = "Allow Mattermost instance to manage backup bucket objects only"
 
   statements = [
-    "Allow dynamic-group ${oci_identity_dynamic_group.backup_writers.name} to manage object-family in compartment id ${var.compartment_ocid}"
+    "Allow dynamic-group ${oci_identity_dynamic_group.backup_writers.name} to read buckets in compartment id ${var.compartment_ocid} where target.bucket.name='${oci_objectstorage_bucket.backups.name}'",
+    "Allow dynamic-group ${oci_identity_dynamic_group.backup_writers.name} to manage objects in compartment id ${var.compartment_ocid} where target.bucket.name='${oci_objectstorage_bucket.backups.name}'",
+  ]
+}
+
+resource "oci_identity_policy" "filestore_writers" {
+  compartment_id = var.tenancy_ocid
+  name           = "${var.name_prefix}-filestore-writers"
+  description    = "Allow Mattermost instance principal to manage filestore bucket via local S3 proxy (rclone)"
+
+  statements = [
+    "Allow dynamic-group ${oci_identity_dynamic_group.backup_writers.name} to inspect buckets in compartment id ${var.compartment_ocid}",
+    "Allow dynamic-group ${oci_identity_dynamic_group.backup_writers.name} to read buckets in compartment id ${var.compartment_ocid} where target.bucket.name='${oci_objectstorage_bucket.files.name}'",
+    "Allow dynamic-group ${oci_identity_dynamic_group.backup_writers.name} to manage objects in compartment id ${var.compartment_ocid} where all {target.bucket.name='${oci_objectstorage_bucket.files.name}', any {request.permission='OBJECT_INSPECT', request.permission='OBJECT_READ', request.permission='OBJECT_CREATE', request.permission='OBJECT_OVERWRITE', request.permission='OBJECT_DELETE'}}",
   ]
 }
