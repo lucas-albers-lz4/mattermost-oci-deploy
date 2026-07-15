@@ -37,7 +37,7 @@ Checks:
 - SSH config validates.
 - Unattended upgrades enabled.
 - Daily unattended security updates configured.
-- Docker CE origin allowed for unattended-upgrades when configured.
+- Docker apt Origin (`Docker:${distro_codename}`) allowed for unattended-upgrades when configured.
 - Reboot, Caddy update, and update-check timers active when installed.
 - Pending reboot flag reported outside the Sunday window.
 - Ksplice installed and autoinstall enabled when available on OCI.

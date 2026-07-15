@@ -127,7 +127,7 @@ On OCI Ubuntu, `scripts/bootstrap-host.sh` installs Oracle Ksplice with autoinst
 
 If the running OCI kernel is newer than Ksplice currently supports, `uptrack-upgrade -y` may report that no Ksplice metadata is available yet. Keep autoinstall enabled so updates apply when Oracle publishes support for that kernel.
 
-Ubuntu security package updates are handled by `unattended-upgrades` with daily package-list updates and automatic unattended upgrades enabled. Docker CE packages are included via [`templates/apt/50unattended-upgrades-mattermost`](../templates/apt/50unattended-upgrades-mattermost).
+Ubuntu security package updates are handled by `unattended-upgrades` with daily package-list updates and automatic unattended upgrades enabled. Docker Engine packages are included via [`templates/apt/50unattended-upgrades-mattermost`](../templates/apt/50unattended-upgrades-mattermost) using apt Origin `Docker` (see `apt-cache policy`).
 
 Scheduled reboots, Caddy auto-updates, and weekly update notifications are described in [`docs/15-unattended-updates.md`](15-unattended-updates.md).
 

@@ -29,6 +29,8 @@ Unattended-Upgrade::Automatic-Reboot "false";
 Unattended-Upgrade::Remove-Unused-Kernel-Packages "true";
 Unattended-Upgrade::Remove-New-Unused-Dependencies "true";
 Unattended-Upgrade::Remove-Unused-Dependencies "false";
+// Servers: install security updates even while Ubuntu is still phasing them.
+APT::Get::Always-Include-Phased-Updates "true";
 EOF
 
   sudo install -m 0644 "$REPO_DIR/templates/apt/50unattended-upgrades-mattermost" /etc/apt/apt.conf.d/50unattended-upgrades-mattermost

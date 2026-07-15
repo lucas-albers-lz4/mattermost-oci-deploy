@@ -9,7 +9,7 @@ This deployment minimizes routine patching work while keeping high-risk applicat
 | Ubuntu security packages | Automatic | `unattended-upgrades` daily |
 | Kernel (Ksplice) | Automatic when supported | OCI live patches without reboot |
 | Kernel reboot | **Sunday 04:00 UTC** if required | Only when `/var/run/reboot-required` exists |
-| Docker Engine (`docker-ce`, `containerd`) | Automatic via apt | Docker CE origin allowed in unattended-upgrades |
+| Docker Engine (`docker-ce`, `containerd`) | Automatic via apt | Docker apt Origin (`Docker:noble`) allowed in unattended-upgrades |
 | **Caddy** container | **Automatic** | Sunday 05:00 UTC pull + recreate |
 | **Postgres** container | **Manual** | Weekly notify-only check |
 | **Mattermost** app image | **Manual** | Weekly notify-only check; follow [`07-upgrades.md`](07-upgrades.md) |
@@ -119,8 +119,8 @@ When `check-updates.sh` or the Monday webhook reports a newer version:
 
 ## Apt configuration
 
-- [`templates/apt/50unattended-upgrades-mattermost`](../templates/apt/50unattended-upgrades-mattermost) — allows Ubuntu security + Docker CE origins
-- `52mattermost-security-upgrades` — keeps apt automatic reboot disabled (timer handles reboots instead)
+- [`templates/apt/50unattended-upgrades-mattermost`](../templates/apt/50unattended-upgrades-mattermost) — allows Ubuntu security + Docker apt Origin (`o=Docker`, not the Label “Docker CE”)
+- `52mattermost-security-upgrades` — disables apt auto-reboot (timer handles reboots) and includes phased security updates
 
 ## Verification
 
@@ -128,9 +128,11 @@ When `check-updates.sh` or the Monday webhook reports a newer version:
 /opt/mattermost/ops/security-audit.sh --host-only
 /opt/mattermost/ops/check-updates.sh
 /opt/mattermost/ops/upgrade-caddy.sh
-grep -r 'Docker CE' /etc/apt/apt.conf.d/
+grep -F 'Docker:${distro_codename}' /etc/apt/apt.conf.d/50unattended-upgrades-mattermost
+apt-cache policy containerd.io | head -20
 ```
 
+Confirm Docker Origin with `apt-cache policy` (`o=Docker,a=noble,…`). Wrong `Allowed-Origins` (`Docker CE:…`) leaves `containerd.io` / compose plugin pending forever.
 ## Non-goals
 
 - Watchtower or auto-recreate for Postgres / Mattermost

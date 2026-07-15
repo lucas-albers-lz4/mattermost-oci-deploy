@@ -52,50 +52,127 @@ else
   add_line "Caddy auto-update: timer not installed"
 fi
 
-postgres_remote_digest() {
-  local digest manifest_file
-  manifest_file=$(mktemp)
-  digest=$(docker buildx imagetools inspect postgres:16-alpine --format '{{.Digest}}' 2>/dev/null || true)
-  if [ -n "$digest" ]; then
-    rm -f "$manifest_file"
-    printf '%s' "$digest"
-    return 0
-  fi
-  if docker manifest inspect postgres:16-alpine >"$manifest_file" 2>/dev/null; then
-    digest=$(python3 - "$manifest_file" <<'PY' 2>/dev/null || true
+# Compare local postgres:16-alpine to the registry digest for this host's arch.
+# (Index/list digests from imagetools never match RepoDigests — that caused false "may be available".)
+postgres_status=$(python3 - <<'PY' 2>/dev/null || echo unavailable
 import json
+import platform
+import subprocess
 import sys
 
-with open(sys.argv[1], encoding="utf-8") as handle:
-    data = json.load(handle)
-if "config" in data:
-    print(data.get("Descriptor", {}).get("digest", ""))
-elif "manifests" in data and data["manifests"]:
-    print(data["manifests"][0].get("digest", ""))
+
+def run(cmd):
+    try:
+        return subprocess.check_output(cmd, stderr=subprocess.DEVNULL, text=True).strip()
+    except (OSError, subprocess.CalledProcessError):
+        return ""
+
+
+def short(digest: str) -> str:
+    if digest.startswith("sha256:") and len(digest) > 19:
+        return digest[:19] + "…"
+    return digest
+
+
+raw_local = run(
+    ["docker", "image", "inspect", "postgres:16-alpine", "--format", "{{json .RepoDigests}}"]
+)
+if not raw_local:
+    print("missing")
+    sys.exit(0)
+
+local_digests = {
+    entry.split("@", 1)[1]
+    for entry in json.loads(raw_local)
+    if isinstance(entry, str) and "@" in entry
+}
+if not local_digests:
+    print("unavailable")
+    sys.exit(0)
+
+arch = {"x86_64": "amd64", "aarch64": "arm64", "arm64": "arm64"}.get(
+    platform.machine(), platform.machine()
+)
+
+manifest_raw = run(["docker", "manifest", "inspect", "postgres:16-alpine"])
+if not manifest_raw:
+    print("unavailable")
+    sys.exit(0)
+
+data = json.loads(manifest_raw)
+remote = ""
+if "manifests" in data:
+    candidates = []
+    for entry in data["manifests"]:
+        plat = entry.get("platform") or {}
+        if plat.get("os") != "linux" or plat.get("architecture") != arch:
+            continue
+        candidates.append(entry)
+    # Prefer entries without a CPU variant (or arm v8) when multiple match.
+    for entry in candidates:
+        variant = (entry.get("platform") or {}).get("variant") or ""
+        if variant in ("", "v8"):
+            remote = entry.get("digest") or ""
+            break
+    if not remote and candidates:
+        remote = candidates[0].get("digest") or ""
+else:
+    # Single-arch manifest: RepoDigests should match the pulled image digest.
+    # Prefer Descriptor.digest when present; otherwise accept any local digest as
+    # ambiguous and rely on imagetools fallback below.
+    remote = (data.get("Descriptor") or {}).get("digest") or ""
+
+if not remote:
+    # Fallback: platform-filtered imagetools (avoids multi-arch index digest).
+    remote = run(
+        [
+            "docker",
+            "buildx",
+            "imagetools",
+            "inspect",
+            "--platform",
+            f"linux/{arch}",
+            "--format",
+            "{{.Digest}}",
+            "postgres:16-alpine",
+        ]
+    )
+
+if not remote:
+    print("unavailable")
+    sys.exit(0)
+
+if remote in local_digests:
+    print(f"current\t{short(remote)}")
+else:
+    local = next(iter(local_digests))
+    print(f"update\t{short(local)}\t{short(remote)}")
 PY
 )
-  fi
-  rm -f "$manifest_file"
-  if [ -n "$digest" ]; then
-    printf '%s' "$digest"
-  fi
-}
 
-if docker image inspect postgres:16-alpine >/dev/null 2>&1; then
-  local_digest=$(docker image inspect postgres:16-alpine --format '{{index .RepoDigests 0}}' 2>/dev/null || true)
-  remote_digest=$(postgres_remote_digest)
-  if [ -n "$remote_digest" ] && [ -n "$local_digest" ] && printf '%s' "$local_digest" | grep -qF "$remote_digest"; then
-    add_line "Postgres (manual): postgres:16-alpine matches registry"
-  elif [ -n "$remote_digest" ]; then
-    add_line "Postgres (manual): update may be available (registry ${remote_digest})"
-  else
-    echo "$LOG_PREFIX WARN: postgres registry compare failed (buildx and manifest inspect)" >&2
+postgres_kind=${postgres_status%%$'\t'*}
+postgres_detail=${postgres_status#*$'\t'}
+case "$postgres_kind" in
+  missing)
+    add_line "Postgres (manual): postgres:16-alpine not present locally"
+    ;;
+  unavailable|"")
+    echo "$LOG_PREFIX WARN: postgres registry compare failed" >&2
     add_line "Postgres (manual): local image present; registry compare unavailable"
-  fi
-else
-  add_line "Postgres (manual): postgres:16-alpine not present locally"
-fi
-
+    ;;
+  current)
+    add_line "Postgres (manual): current (${postgres_detail})"
+    ;;
+  update)
+    pg_local=${postgres_detail%%$'\t'*}
+    pg_remote=${postgres_detail#*$'\t'}
+    add_line "Postgres (manual): update available (local ${pg_local} → registry ${pg_remote})"
+    ;;
+  *)
+    echo "$LOG_PREFIX WARN: unexpected postgres status: ${postgres_status}" >&2
+    add_line "Postgres (manual): compare result unexpected"
+    ;;
+esac
 current_mm=${MM_VERSION:-unknown}
 latest_mm=$(python3 - <<'PY' 2>/dev/null || echo unknown
 import json
@@ -182,7 +259,7 @@ printf '%s\n' "${lines[@]}"
 should_notify=false
 for line in "${lines[@]}"; do
   case "$line" in
-    *"update may be available"*|*"updates available"*|*"reboot required"*)
+    *"update available"*|*"updates available"*|*"reboot required"*)
       should_notify=true
       ;;
   esac

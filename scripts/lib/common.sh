@@ -34,29 +34,49 @@ volume_name() {
   echo "${COMPOSE_PROJECT_NAME}_$1"
 }
 
+_webhook_payload() {
+  # Build JSON {"text": "..."} with proper escaping (apt lines can contain quotes/brackets).
+  MESSAGE=$1 HOST=$2 python3 - <<'PY'
+import json
+import os
+
+print(json.dumps({"text": f"{os.environ['MESSAGE']} on {os.environ['HOST']}"}))
+PY
+}
+
+_post_webhook() {
+  text=$1
+
+  if [ -z "${ALERT_WEBHOOK_URL:-}" ]; then
+    echo "$LOG_PREFIX webhook skipped: ALERT_WEBHOOK_URL unset" >&2
+    return 0
+  fi
+
+  host=$(hostname)
+  payload=$(_webhook_payload "$text" "$host") || {
+    echo "$LOG_PREFIX WARN: webhook payload encode failed" >&2
+    return 0
+  }
+
+  if curl -fsS --max-time 10 \
+    -H "Content-Type: application/json" \
+    -d "$payload" \
+    "$ALERT_WEBHOOK_URL" >/dev/null; then
+    echo "$LOG_PREFIX webhook sent" >&2
+  else
+    echo "$LOG_PREFIX WARN: webhook post failed (check ALERT_WEBHOOK_URL / Mattermost reachability)" >&2
+  fi
+}
+
 notify_failure() {
   status=$1
   message=$2
-
-  if [ -n "${ALERT_WEBHOOK_URL:-}" ]; then
-    host=$(hostname)
-    curl -fsS --max-time 10 \
-      -H "Content-Type: application/json" \
-      -d "{\"text\":\"${message} on ${host} with exit ${status}\"}" \
-      "$ALERT_WEBHOOK_URL" >/dev/null || true
-  fi
+  _post_webhook "${message} with exit ${status}"
 }
 
 notify_webhook() {
   message=$1
-
-  if [ -n "${ALERT_WEBHOOK_URL:-}" ]; then
-    host=$(hostname)
-    curl -fsS --max-time 10 \
-      -H "Content-Type: application/json" \
-      -d "{\"text\":\"${message} on ${host}\"}" \
-      "$ALERT_WEBHOOK_URL" >/dev/null || true
-  fi
+  _post_webhook "$message"
 }
 
 notify_maintenance() {

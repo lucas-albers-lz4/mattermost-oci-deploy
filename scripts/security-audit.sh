@@ -148,10 +148,10 @@ host_audit() {
   else
     warn "daily unattended security updates not configured"
   fi
-  if [ -f /etc/apt/apt.conf.d/50unattended-upgrades-mattermost ] && grep -q 'Docker CE' /etc/apt/apt.conf.d/50unattended-upgrades-mattermost; then
-    pass "docker ce origin allowed for unattended-upgrades"
+  if [ -f /etc/apt/apt.conf.d/50unattended-upgrades-mattermost ] && grep -qF 'Docker:${distro_codename}' /etc/apt/apt.conf.d/50unattended-upgrades-mattermost; then
+    pass "docker origin allowed for unattended-upgrades"
   else
-    warn "docker ce origin not configured for unattended-upgrades"
+    warn "docker origin not configured for unattended-upgrades (need Origin Docker, not Docker CE)"
   fi
   if [ -f /var/run/reboot-required ]; then
     dow=$(date -u +%u)
