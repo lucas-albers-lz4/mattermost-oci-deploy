@@ -226,10 +226,16 @@ ensure_filestore_plugin_bundle() {
     amazon/aws-cli \
     s3 cp /plugin.tar.gz "s3://${MM_FILESETTINGS_AMAZONS3BUCKET}/${key}" \
     --endpoint-url http://filestore-s3:9000
+  # Brief settle so rclone can serve range/seek reads of a freshly written large object.
+  sleep 3
 }
 
 # mmctl plugin add; tolerate rclone NoSuchUpload if the plugin still appears in list
 # or can be recovered via filestore sync after recreate.
+#
+# Large bundles often fail Mattermost's own S3 persist (rclone NoSuchUpload / seek).
+# Recovery relies on a pre-seeded filestore key + PluginStates entry + recreate.
+# Fresh uploads can fail the first sync seek — retry with backoff.
 mmctl_plugin_add_tolerant() {
   plugin_id=$1
   container_tar=$2
@@ -242,13 +248,21 @@ mmctl_plugin_add_tolerant() {
     echo "$LOG_PREFIX plugin present after failed add (local extract likely succeeded)"
     return 0
   fi
-  # Pre-seeded filestore + recreate often recovers managed plugins.
-  echo "$LOG_PREFIX attempting filestore sync recovery via recreate"
-  compose up -d --force-recreate mattermost-prod >/dev/null
-  wait_for_local_mmctl 120
-  if plugin_is_installed "$plugin_id" || plugin_is_enabled "$plugin_id"; then
-    return 0
-  fi
+
+  attempt=1
+  max_attempts=3
+  while [ "$attempt" -le "$max_attempts" ]; do
+    wait_s=$((attempt * 5))
+    echo "$LOG_PREFIX filestore sync recovery attempt ${attempt}/${max_attempts} (sleep ${wait_s}s then recreate)"
+    sleep "$wait_s"
+    compose up -d --force-recreate mattermost-prod >/dev/null
+    wait_for_local_mmctl 120
+    if plugin_is_installed "$plugin_id" || plugin_is_enabled "$plugin_id"; then
+      echo "$LOG_PREFIX recovered ${plugin_id} via filestore sync"
+      return 0
+    fi
+    attempt=$((attempt + 1))
+  done
   die "mmctl plugin add failed and ${plugin_id} is still missing after filestore sync recovery"
 }
 

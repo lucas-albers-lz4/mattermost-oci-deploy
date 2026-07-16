@@ -123,8 +123,9 @@ tarball_abs=$(cd "$(dirname "$TARBALL")" && pwd)/$(basename "$TARBALL")
 
 if [ "$SYNC_OPS_FIRST" = "true" ]; then
   echo "Syncing ops scripts to $remote first..."
-  export REMOTE_HOST REMOTE_USER SSH_REMOTE_OPTS
-  "$REPO_DIR/scripts/sync-ops-to-host.sh" --no-verify "$REMOTE_HOST"
+  # sync-ops-to-host accepts either REMOTE_HOST env or a positional host, not both.
+  REMOTE_HOST="$REMOTE_HOST" REMOTE_USER="$REMOTE_USER" SSH_REMOTE_OPTS="$SSH_REMOTE_OPTS" \
+    "$REPO_DIR/scripts/sync-ops-to-host.sh" --no-verify
 fi
 
 echo "Deploying $(basename "$tarball_abs") ($(du -h "$tarball_abs" | awk '{print $1}')) -> $remote"
