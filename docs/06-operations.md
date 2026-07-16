@@ -1,3 +1,57 @@
+## Sync ops scripts from git (day-2)
+
+Do **not** keep a bare `git pull` on the VM as the primary path: the live tree is `/opt/mattermost` (with secrets in `.env`), while checked-in scripts land under `/opt/mattermost/deploy` and are copied into `/opt/mattermost/ops` by bootstrap. Prefer the laptop → rsync → bootstrap flow already used by `deploy-from-zero.sh`.
+
+From your Mac (repo checkout), after commits that change ops/monitoring scripts (for example `c5c6f1a`):
+
+```sh
+# Optional: preview file list
+scripts/sync-ops-to-host.sh --dry-run matterhost
+
+# Default: refresh /opt/mattermost/ops + apt unattended-upgrades + systemd timers
+# Does not overwrite compose.yml / Caddyfile / .env
+scripts/sync-ops-to-host.sh matterhost
+```
+
+`matterhost` can be an IP, DNS name, SSH config `Host` alias, or `ubuntu@host`. Default user is `ubuntu`.
+
+When templates must also refresh (compose, Caddy, image Dockerfile):
+
+```sh
+scripts/sync-ops-to-host.sh --full matterhost
+```
+
+Then recreate containers only if those template changes require it.
+
+Verify on the VM:
+
+```sh
+ssh matterhost '/opt/mattermost/ops/check-updates.sh'
+ssh matterhost '/opt/mattermost/ops/security-audit.sh --host-only'
+```
+
+Equivalent manual two-step (same as what the script runs):
+
+```sh
+rsync -az --delete \
+  -e ssh \
+  --exclude '.git/' \
+  --exclude '.terraform/' \
+  --exclude '*.tfstate*' \
+  --exclude '*.tfvars' \
+  --exclude 'tfplan' \
+  --exclude '.mattermost-secrets.env' \
+  --exclude 'generated.env' \
+  --exclude '.env' \
+  ./ ubuntu@matterhost:/opt/mattermost/deploy/
+
+ssh ubuntu@matterhost \
+  'cd /opt/mattermost/deploy && \
+   APP_DIR=/opt/mattermost REPO_DIR=/opt/mattermost/deploy \
+   INSTALL_PACKAGES=false COPY_ASSETS=true COPY_STACK_TEMPLATES=false \
+   INSTALL_KSPLICE=false ./scripts/bootstrap-host.sh'
+```
+
 ## User Accounts
 
 This deployment is invite-only. Use **`manage-community-users.sh`** on the VM to create accounts, assign teams/channels, and print a one-line text message for parents.
@@ -115,7 +169,46 @@ install the separate [Community Admin plugin](https://github.com/lucas-albers-lz
 
 **Requires** `EnableLocalMode: true` on the Mattermost container (already set in this stack’s Compose template) so password reset can use `mmctl --local`.
 
-### Install
+### Install notes (filestore + MaxFileSize)
+
+This stack stores attachments and **plugin bundles** in Object Storage via the on-VM rclone S3 proxy (`MM_FILESETTINGS_DRIVERNAME=amazons3`). On every Mattermost start, plugins are removed locally and re-synced from:
+
+`s3://mattermost-files/prod/plugins/<plugin-id>.tar.gz`
+
+If `mmctl plugin add` succeeds but that object is missing, the plugin disappears after the next restart (look for `Failed to sync plugin from file store` / `The specified key does not exist` in prod logs).
+
+Also, `MM_FILESETTINGS_MAXFILESIZE` (default 50 MiB) limits plugin uploads. A ~63 MiB Community Admin build needs a temporary raise (handled by the install script).
+
+Install/upgrade scripts are **filestore-first**: they upload the tarball to Object Storage via AWS CLI against the rclone proxy *before* `mmctl plugin add`, because Mattermost’s own multipart persist often fails with `NoSuchUpload` on large bundles.
+
+### Upgrade / redeploy (laptop)
+
+From this repo on your Mac, after `make dist` in the plugin repo:
+
+```sh
+# Push latest ops scripts (needed when install helpers change), then upgrade
+scripts/deploy-community-admin-plugin.sh --sync-ops matterhost \
+  /path/to/mattermost-plugin-community-admin/dist/com.lalbers.community-admin-*.tar.gz
+```
+
+Or in two steps:
+
+```sh
+scripts/sync-ops-to-host.sh matterhost
+scripts/deploy-community-admin-plugin.sh matterhost /path/to/plugin.tar.gz
+```
+
+On the VM alone (tarball already present):
+
+```sh
+cd /opt/mattermost
+FORCE=true PLUGIN_TARBALL_LOCAL=/tmp/com.lalbers.community-admin.tar.gz \
+  /opt/mattermost/ops/install-community-admin-plugin.sh --force
+```
+
+`FORCE=true` disables/deletes the existing plugin, overwrites the filestore object, re-adds, enables, and verifies a prod recreate still shows the plugin.
+
+### Install (first time on VM)
 
 From a local tarball built with `make dist` in the plugin repo:
 
@@ -142,7 +235,17 @@ PLUGIN_URL=... \
   /opt/mattermost/ops/install-community-admin-plugin.sh
 ```
 
-The install script is copied to the VM by `bootstrap-host.sh` as `/opt/mattermost/ops/install-community-admin-plugin.sh`.
+The install script is copied to the VM by `bootstrap-host.sh` as `/opt/mattermost/ops/install-community-admin-plugin.sh`. After script changes on your laptop, push them with `scripts/sync-ops-to-host.sh` (see [Sync ops scripts](#sync-ops-scripts-from-git-day-2)).
+
+### Troubleshooting plugin deploy
+
+| Symptom | What to do |
+|--------|------------|
+| `Uploaded plugin size exceeds limit` | Install script should raise MaxFileSize temporarily; ensure ops scripts are synced |
+| `Failed to sync` / `key does not exist` after restart | Filestore object missing — re-run with `FORCE=true` and a local tarball |
+| `plugin add` → `NoSuchUpload` / Internal Server Error | Expected flake with rclone for large bundles; script pre-seeds S3 and recovers via enable/recreate |
+| Plugin version unchanged after deploy | Forgot `FORCE=true`, or old ops script on VM — use `--sync-ops` then redeploy |
+| Mattermost crash: `config.json: permission denied` | Config volume file owned by root — `sudo chown 2000:2000` that file; never edit config as root |
 
 ### Configure organizers (system admin)
 

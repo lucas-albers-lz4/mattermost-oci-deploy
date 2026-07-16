@@ -26,6 +26,8 @@ Install on VM: `/opt/mattermost/ops/install-community-admin-plugin.sh` — see `
 
 ```sh
 scripts/deploy-from-zero.sh --fresh
+scripts/sync-ops-to-host.sh matterhost
+scripts/deploy-community-admin-plugin.sh matterhost /path/to/plugin.tar.gz
 scripts/security-audit.sh --repo-only
 tofu -chdir=infra/opentofu validate
 ```

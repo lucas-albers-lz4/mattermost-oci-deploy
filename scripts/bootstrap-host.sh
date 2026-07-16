@@ -5,6 +5,9 @@ APP_DIR=${APP_DIR:-/opt/mattermost}
 REPO_DIR=${REPO_DIR:-$(pwd)}
 INSTALL_PACKAGES=${INSTALL_PACKAGES:-true}
 COPY_ASSETS=${COPY_ASSETS:-true}
+# When COPY_ASSETS=true: also refresh compose/Caddy/image/postgres/rclone templates.
+# Set false to update ops scripts only (used by sync-ops-to-host.sh).
+COPY_STACK_TEMPLATES=${COPY_STACK_TEMPLATES:-true}
 INSTALL_TIMERS=${INSTALL_TIMERS:-true}
 INSTALL_KSPLICE=${INSTALL_KSPLICE:-true}
 REQUIRE_KSPLICE=${REQUIRE_KSPLICE:-false}
@@ -93,12 +96,17 @@ sudo mkdir -p "$APP_DIR"/{caddy,mattermost-arm64,postgres/init,ops/lib,backups,r
 sudo chown -R ubuntu:ubuntu "$APP_DIR"
 
 if [ "$COPY_ASSETS" = "true" ]; then
-  cp "$REPO_DIR/templates/compose.yml" "$APP_DIR/compose.yml"
-  cp "$REPO_DIR/templates/Caddyfile" "$APP_DIR/caddy/Caddyfile"
-  cp "$REPO_DIR/templates/mattermost-arm64.Dockerfile" "$APP_DIR/mattermost-arm64/Dockerfile"
-  cp "$REPO_DIR/templates/mattermost-entrypoint.sh" "$APP_DIR/mattermost-arm64/entrypoint.sh"
-  cp "$REPO_DIR/templates/postgres-init.sh" "$APP_DIR/postgres/init/001-create-mattermost-dbs.sh"
-  cp "$REPO_DIR/templates/rclone/rclone.conf.tpl" "$APP_DIR/rclone/rclone.conf.tpl"
+  if [ "$COPY_STACK_TEMPLATES" = "true" ]; then
+    cp "$REPO_DIR/templates/compose.yml" "$APP_DIR/compose.yml"
+    cp "$REPO_DIR/templates/Caddyfile" "$APP_DIR/caddy/Caddyfile"
+    cp "$REPO_DIR/templates/mattermost-arm64.Dockerfile" "$APP_DIR/mattermost-arm64/Dockerfile"
+    cp "$REPO_DIR/templates/mattermost-entrypoint.sh" "$APP_DIR/mattermost-arm64/entrypoint.sh"
+    cp "$REPO_DIR/templates/postgres-init.sh" "$APP_DIR/postgres/init/001-create-mattermost-dbs.sh"
+    cp "$REPO_DIR/templates/rclone/rclone.conf.tpl" "$APP_DIR/rclone/rclone.conf.tpl"
+    cp "$REPO_DIR/templates/postgres/README.md" "$APP_DIR/postgres/README.md"
+    chmod 755 "$APP_DIR/mattermost-arm64/entrypoint.sh" "$APP_DIR/postgres/init/001-create-mattermost-dbs.sh"
+  fi
+
   cp "$REPO_DIR/scripts/backup-mattermost.sh" "$APP_DIR/ops/backup-mattermost.sh"
   cp "$REPO_DIR/scripts/download-backup.sh" "$APP_DIR/ops/download-backup.sh"
   cp "$REPO_DIR/scripts/restore-test-from-backup.sh" "$APP_DIR/ops/restore-test-from-backup.sh"
@@ -119,10 +127,8 @@ if [ "$COPY_ASSETS" = "true" ]; then
   cp "$REPO_DIR/scripts/configure-push-notifications.sh" "$APP_DIR/ops/configure-push-notifications.sh"
   cp "$REPO_DIR/scripts/diagnose-push-notifications.sh" "$APP_DIR/ops/diagnose-push-notifications.sh"
   cp "$REPO_DIR/scripts/render-rclone-config.sh" "$APP_DIR/ops/render-rclone-config.sh"
-  cp "$REPO_DIR/templates/postgres/README.md" "$APP_DIR/postgres/README.md"
   cp "$REPO_DIR/scripts/lib/common.sh" "$APP_DIR/ops/lib/common.sh"
   cp "$REPO_DIR/templates/sshd/99-mattermost-hardening.conf" "$APP_DIR/ops/99-mattermost-hardening.conf"
-  chmod 755 "$APP_DIR/mattermost-arm64/entrypoint.sh" "$APP_DIR/postgres/init/001-create-mattermost-dbs.sh"
   chmod 750 "$APP_DIR/ops/"*.sh
 fi
 

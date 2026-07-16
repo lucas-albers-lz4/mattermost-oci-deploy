@@ -76,6 +76,7 @@ Default posture: SSH from admin CIDR only, UFW, internal Postgres, Caddy as sole
 
 - [docs/14-performance.md](docs/14-performance.md) — Postgres caps, idle test instance, Go limits.
 - [docs/15-unattended-updates.md](docs/15-unattended-updates.md) — OS patching, Caddy updates, update alerts.
+- [docs/06-operations.md](docs/06-operations.md#sync-ops-scripts-from-git-day-2) — push ops/monitoring script updates with `scripts/sync-ops-to-host.sh`.
 
 ## Backups and restore
 

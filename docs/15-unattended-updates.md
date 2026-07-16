@@ -57,10 +57,18 @@ systemctl list-timers 'mattermost-*'
 | `mattermost-backup.timer` | Daily backups |
 | `mattermost-health.timer` | Health checks |
 
-Install or refresh timers via bootstrap:
+Install or refresh ops scripts, apt allowlists, and timers from your laptop (preferred day-2 path):
 
 ```sh
-APP_DIR=/opt/mattermost REPO_DIR=/path/to/repo INSTALL_PACKAGES=false COPY_ASSETS=true /path/to/repo/scripts/bootstrap-host.sh
+scripts/sync-ops-to-host.sh matterhost
+```
+
+See [`06-operations.md`](06-operations.md#sync-ops-scripts-from-git-day-2). On the VM itself (after the repo is already under `/opt/mattermost/deploy`):
+
+```sh
+APP_DIR=/opt/mattermost REPO_DIR=/opt/mattermost/deploy \
+  INSTALL_PACKAGES=false COPY_ASSETS=true COPY_STACK_TEMPLATES=false \
+  /opt/mattermost/deploy/scripts/bootstrap-host.sh
 ```
 
 ## Alerting
