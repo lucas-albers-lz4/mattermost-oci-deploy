@@ -1,7 +1,7 @@
 // Allow Docker stable updates for docker-ce, containerd.io, and compose plugin.
 // Apt Origin is "Docker" (not "Docker CE"); archive is the Ubuntu codename (e.g. noble).
 // Verify with: apt-cache policy containerd.io | grep -E 'o=|a='
-// Reboots are handled by mattermost-reboot.timer (Sunday 04:00 UTC), not apt.
+// Reboots are handled by mattermost-reboot.timer (Sunday 09:00 UTC), not apt.
 Unattended-Upgrade::Allowed-Origins {
     "${distro_id}:${distro_codename}";
     "${distro_id}:${distro_codename}-security";

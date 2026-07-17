@@ -1,8 +1,8 @@
 [Unit]
-Description=Reboot on Sunday 04:00 UTC if required by pending kernel updates
+Description=Reboot on Sunday 09:00 UTC if required by pending kernel updates
 
 [Timer]
-OnCalendar=Sun *-*-* 04:00:00 UTC
+OnCalendar=Sun *-*-* 09:00:00 UTC
 Persistent=true
 AccuracySec=1min
 

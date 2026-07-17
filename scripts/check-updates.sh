@@ -54,6 +54,7 @@ fi
 
 # Compare local postgres:16-alpine to the registry digest for this host's arch.
 # (Index/list digests from imagetools never match RepoDigests — that caused false "may be available".)
+# Digests decide whether an update exists; PG_VERSION explains what changed when available.
 postgres_status=$(python3 - <<'PY' 2>/dev/null || echo unavailable
 import json
 import platform
@@ -74,6 +75,13 @@ def short(digest: str) -> str:
     return digest
 
 
+def pg_version_from_env(env_list):
+    for item in env_list or []:
+        if isinstance(item, str) and item.startswith("PG_VERSION="):
+            return item.split("=", 1)[1].strip()
+    return ""
+
+
 raw_local = run(
     ["docker", "image", "inspect", "postgres:16-alpine", "--format", "{{json .RepoDigests}}"]
 )
@@ -90,9 +98,20 @@ if not local_digests:
     print("unavailable")
     sys.exit(0)
 
+local_env_raw = run(
+    ["docker", "image", "inspect", "postgres:16-alpine", "--format", "{{json .Config.Env}}"]
+)
+local_version = ""
+if local_env_raw:
+    try:
+        local_version = pg_version_from_env(json.loads(local_env_raw))
+    except json.JSONDecodeError:
+        local_version = ""
+
 arch = {"x86_64": "amd64", "aarch64": "arm64", "arm64": "arm64"}.get(
     platform.machine(), platform.machine()
 )
+platform_key = f"linux/{arch}"
 
 manifest_raw = run(["docker", "manifest", "inspect", "postgres:16-alpine"])
 if not manifest_raw:
@@ -131,7 +150,7 @@ if not remote:
             "imagetools",
             "inspect",
             "--platform",
-            f"linux/{arch}",
+            platform_key,
             "--format",
             "{{.Digest}}",
             "postgres:16-alpine",
@@ -142,16 +161,52 @@ if not remote:
     print("unavailable")
     sys.exit(0)
 
+remote_version = ""
+remote_image_raw = run(
+    [
+        "docker",
+        "buildx",
+        "imagetools",
+        "inspect",
+        "--format",
+        f'{{{{json (index .Image "{platform_key}")}}}}',
+        "postgres:16-alpine",
+    ]
+)
+if not remote_image_raw:
+    # Single-arch tags expose .Image directly.
+    remote_image_raw = run(
+        [
+            "docker",
+            "buildx",
+            "imagetools",
+            "inspect",
+            "--format",
+            "{{json .Image}}",
+            "postgres:16-alpine",
+        ]
+    )
+if remote_image_raw:
+    try:
+        remote_image = json.loads(remote_image_raw)
+        if isinstance(remote_image, dict):
+            env = (remote_image.get("config") or {}).get("Env")
+            remote_version = pg_version_from_env(env)
+    except json.JSONDecodeError:
+        remote_version = ""
+
+# Fields: kind, local_digest, remote_digest, local_version, remote_version
 if remote in local_digests:
-    print(f"current\t{short(remote)}")
+    print(f"current\t{short(remote)}\t\t{local_version}\t{remote_version or local_version}")
 else:
     local = next(iter(local_digests))
-    print(f"update\t{short(local)}\t{short(remote)}")
+    print(f"update\t{short(local)}\t{short(remote)}\t{local_version}\t{remote_version}")
 PY
 )
 
-postgres_kind=${postgres_status%%$'\t'*}
-postgres_detail=${postgres_status#*$'\t'}
+# postgres_status fields (tab-separated):
+# kind local_digest remote_digest local_version remote_version
+IFS=$'\t' read -r postgres_kind pg_local_digest pg_remote_digest pg_local_ver pg_remote_ver <<<"$postgres_status"
 case "$postgres_kind" in
   missing)
     add_line "Postgres (manual): postgres:16-alpine not present locally"
@@ -161,12 +216,21 @@ case "$postgres_kind" in
     add_line "Postgres (manual): local image present; registry compare unavailable"
     ;;
   current)
-    add_line "Postgres (manual): current (${postgres_detail})"
+    if [ -n "$pg_local_ver" ]; then
+      add_line "Postgres (manual): ${pg_local_ver} is current (${pg_local_digest})"
+    else
+      add_line "Postgres (manual): current (${pg_local_digest})"
+    fi
     ;;
   update)
-    pg_local=${postgres_detail%%$'\t'*}
-    pg_remote=${postgres_detail#*$'\t'}
-    add_line "Postgres (manual): update available (local ${pg_local} → registry ${pg_remote})"
+    pg_docs="docs/15-unattended-updates.md"
+    if [ -n "$pg_local_ver" ] && [ -n "$pg_remote_ver" ] && [ "$pg_local_ver" != "$pg_remote_ver" ]; then
+      add_line "Postgres (manual): installed=${pg_local_ver}; latest=${pg_remote_ver} — see ${pg_docs}"
+    elif [ -n "$pg_local_ver" ] && [ -n "$pg_remote_ver" ]; then
+      add_line "Postgres (manual): image refresh available (PG ${pg_local_ver}; local ${pg_local_digest} → registry ${pg_remote_digest}) — see ${pg_docs}"
+    else
+      add_line "Postgres (manual): update available (local ${pg_local_digest} → registry ${pg_remote_digest}) — see ${pg_docs}"
+    fi
     ;;
   *)
     echo "$LOG_PREFIX WARN: unexpected postgres status: ${postgres_status}" >&2
@@ -259,11 +323,12 @@ printf '%s\n' "${lines[@]}"
 should_notify=false
 for line in "${lines[@]}"; do
   case "$line" in
-    *"update available"*|*"updates available"*|*"reboot required"*)
+    *"update available"*|*"updates available"*|*"image refresh available"*|*"reboot required"*)
       should_notify=true
       ;;
   esac
-  if [[ "$line" =~ latest=[0-9]+\.[0-9]+\.[0-9]+ ]] && [[ "$line" != *"latest=${current_mm}"* ]]; then
+  # Mattermost uses x.y.z; Postgres image PG_VERSION is often x.y.
+  if [[ "$line" =~ latest=[0-9]+\.[0-9]+ ]] && [[ "$line" != *"latest=${current_mm}"* ]]; then
     should_notify=true
   fi
 done

@@ -156,10 +156,10 @@ host_audit() {
   if [ -f /var/run/reboot-required ]; then
     dow=$(date -u +%u)
     hour=$(date -u +%H)
-    if [ "$dow" = "7" ] && [ "$hour" -ge 4 ] && [ "$hour" -lt 6 ]; then
+    if [ "$dow" = "7" ] && [ "$hour" -ge 9 ] && [ "$hour" -lt 11 ]; then
       pass "reboot pending within scheduled Sunday window"
     else
-      warn "reboot pending outside Sunday 04:00-06:00 UTC window"
+      warn "reboot pending outside Sunday 09:00-11:00 UTC window"
     fi
   else
     pass "no pending reboot flag"

@@ -15,9 +15,9 @@ cd /opt/mattermost
 /opt/mattermost/ops/backup-mattermost.sh
 ```
 
-If `/var/run/reboot-required` exists, reboot first (or wait for Sunday 04:00 UTC) before a long Mattermost upgrade — a mid-upgrade host reboot causes extra downtime.
+If `/var/run/reboot-required` exists, reboot first (or wait for Sunday 09:00 UTC / ~3:00 AM MDT) before a long Mattermost upgrade — a mid-upgrade host reboot causes extra downtime.
 
-Avoid scheduling Mattermost upgrades during the automated Sunday **04:00–06:00 UTC** window unless you disable `mattermost-reboot.timer` and `mattermost-caddy-update.timer` first. See [`15-unattended-updates.md`](15-unattended-updates.md).
+Avoid scheduling Mattermost upgrades during the automated Sunday **09:00–11:00 UTC** window (~3:00–5:00 AM MDT) unless you disable `mattermost-reboot.timer` and `mattermost-caddy-update.timer` first. See [`15-unattended-updates.md`](15-unattended-updates.md).
 
 ## Choose Version
 

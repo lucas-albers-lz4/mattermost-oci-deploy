@@ -48,7 +48,7 @@ _post_webhook() {
   text=$1
 
   if [ -z "${ALERT_WEBHOOK_URL:-}" ]; then
-    echo "$LOG_PREFIX webhook skipped: ALERT_WEBHOOK_URL unset" >&2
+    echo "$LOG_PREFIX webhook skipped: ALERT_WEBHOOK_URL unset (set in ${ENV_FILE} — see docs/15-unattended-updates.md)" >&2
     return 0
   fi
 

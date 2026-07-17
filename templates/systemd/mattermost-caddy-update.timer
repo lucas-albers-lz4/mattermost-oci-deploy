@@ -1,8 +1,8 @@
 [Unit]
-Description=Update Caddy image weekly on Sunday 05:00 UTC
+Description=Update Caddy image weekly on Sunday 10:00 UTC
 
 [Timer]
-OnCalendar=Sun *-*-* 05:00:00 UTC
+OnCalendar=Sun *-*-* 10:00:00 UTC
 Persistent=true
 AccuracySec=1min
 
