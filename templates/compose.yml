@@ -1,7 +1,9 @@
 services:
   # Local S3 API in front of private OCI bucket mattermost-files (rclone + instance principal).
   filestore-s3:
-    image: rclone/rclone:1.69
+    # 1.74.4+ fixes spurious 404 on HEAD/GET during VFS writeback (rclone#8188),
+    # which broke Mattermost image preview/thumbnail generation right after upload.
+    image: rclone/rclone:1.74.4
     restart: unless-stopped
     init: true
     security_opt:
