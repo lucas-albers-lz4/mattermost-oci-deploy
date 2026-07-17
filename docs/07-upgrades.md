@@ -15,6 +15,8 @@ cd /opt/mattermost
 /opt/mattermost/ops/backup-mattermost.sh
 ```
 
+Record the backup timestamp printed as `[mattermost-backup] completed <timestamp>` before changing `MM_VERSION`. Keep that timestamp for rollback.
+
 If `/var/run/reboot-required` exists, reboot first (or wait for Sunday 09:00 UTC / ~3:00 AM MDT) before a long Mattermost upgrade — a mid-upgrade host reboot causes extra downtime.
 
 Avoid scheduling Mattermost upgrades during the automated Sunday **09:00–11:00 UTC** window (~3:00–5:00 AM MDT) unless you disable `mattermost-reboot.timer` and `mattermost-caddy-update.timer` first. See [`15-unattended-updates.md`](15-unattended-updates.md).
@@ -46,6 +48,12 @@ cd /opt/mattermost
 /opt/mattermost/ops/build-mattermost-image.sh
 ```
 
+The build script:
+
+- Fetches the official ARM64 `.sha256` sidecar unless `MM_TARBALL_SHA256` is already set in `.env`
+- Passes that digest into the image build and fails if the downloaded tarball does not match
+- Runs `mattermost version` inside the built image and fails unless it reports the requested `MM_VERSION`
+
 The resulting image tag is shared:
 
 ```text
@@ -66,18 +74,24 @@ The helper activates the `upgrade-test` Compose profile and waits for internal H
 Validate:
 
 ```sh
-curl -I https://<test-hostname>/
+# Internal check (authoritative from the VM)
+docker compose --env-file .env -p mattermost -f compose.yml --profile upgrade-test \
+  exec -T mattermost-test curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8000/
 docker compose --env-file .env -p mattermost -f compose.yml logs --tail=200 mattermost-test
 /opt/mattermost/ops/health-check.sh
 ```
 
-Also validate in the browser:
+`curl -I https://<test-hostname>/` from the VM may return **403** because Caddy restricts the test host to `TEST_ALLOWED_CIDR`. That is expected. Confirm the public test URL from an allowed admin network/browser instead.
+
+Also validate in the browser (from the allowed admin network):
 
 - Login
 - Channel load
 - Message send
-- File upload/download
+- File upload/download (including image preview)
 - Plugins or integrations, if used
+
+Do **not** promote production until those checks pass.
 
 ## Deploy Production
 

@@ -1,6 +1,6 @@
 FROM ubuntu:noble
 
-ARG MM_VERSION=11.8.2
+ARG MM_VERSION=11.8.4
 ARG MM_TARBALL_SHA256=
 ENV PATH="/mattermost/bin:${PATH}" \
     MM_INSTALL_TYPE=docker \
@@ -17,8 +17,11 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 RUN set -eux; \
-    curl -fsSL "https://releases.mattermost.com/${MM_VERSION}/mattermost-${MM_VERSION}-linux-arm64.tar.gz?src=oci-arm64" -o /tmp/mattermost.tar.gz; \
-    if [ -n "$MM_TARBALL_SHA256" ]; then echo "$MM_TARBALL_SHA256  /tmp/mattermost.tar.gz" | sha256sum -c -; fi; \
+    test -n "$MM_TARBALL_SHA256"; \
+    curl -fsSL --retry 3 --retry-delay 2 --retry-all-errors \
+      "https://releases.mattermost.com/${MM_VERSION}/mattermost-${MM_VERSION}-linux-arm64.tar.gz?src=oci-arm64" \
+      -o /tmp/mattermost.tar.gz; \
+    echo "$MM_TARBALL_SHA256  /tmp/mattermost.tar.gz" | sha256sum -c -; \
     tar -xzf /tmp/mattermost.tar.gz -C /; \
     rm -f /tmp/mattermost.tar.gz; \
     mkdir -p /mattermost/data /mattermost/logs /mattermost/config /mattermost/plugins /mattermost/client/plugins /mattermost/bleve-indexes; \

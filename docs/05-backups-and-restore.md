@@ -75,7 +75,7 @@ sudo systemctl enable --now mattermost-backup.timer
 /opt/mattermost/ops/backup-mattermost.sh
 ```
 
-The backup script briefly stops the Mattermost app containers while dumping databases and archiving volumes. It restarts the app containers afterward.
+The backup script briefly stops the Mattermost app containers while dumping databases and archiving volumes, then restarts them as soon as the local backup directory and `SHA256SUMS` are complete. OCI Object Storage uploads run after that restart so slow uploads do not extend application downtime.
 
 If `ALERT_WEBHOOK_URL` is set in `/opt/mattermost/.env`, backup failures send a JSON webhook:
 

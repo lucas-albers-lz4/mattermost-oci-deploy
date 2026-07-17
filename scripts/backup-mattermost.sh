@@ -20,6 +20,7 @@ mkdir -p "$BACKUP_DIR"
 prod_was_running=0
 test_was_running=0
 apps_stopped=0
+apps_restarted=0
 
 service_running() {
   service=$1
@@ -34,7 +35,7 @@ service_running() {
 }
 
 restart_apps() {
-  if [ "$apps_stopped" = "0" ]; then
+  if [ "$apps_stopped" = "0" ] || [ "$apps_restarted" = "1" ]; then
     return 0
   fi
   if [ "$prod_was_running" = "1" ]; then
@@ -46,6 +47,21 @@ restart_apps() {
   if [ "$prod_was_running" = "1" ] || [ "$test_was_running" = "1" ]; then
     compose up -d caddy >/dev/null || true
   fi
+  apps_restarted=1
+}
+
+wait_for_prod_internal() {
+  attempts=${1:-40}
+  i=1
+  while [ "$i" -le "$attempts" ]; do
+    code=$(compose exec -T mattermost-prod curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8000/ 2>/dev/null || true)
+    if [ "$code" = "200" ]; then
+      return 0
+    fi
+    sleep 2
+    i=$((i + 1))
+  done
+  return 1
 }
 
 finish() {
@@ -110,6 +126,19 @@ docker run --rm \
 cp "$APP_DIR/compose.yml" "$BACKUP_DIR/compose.yml"
 cp "$APP_DIR/caddy/Caddyfile" "$BACKUP_DIR/Caddyfile"
 sha256sum "$BACKUP_DIR"/* > "$BACKUP_DIR/SHA256SUMS"
+
+# Local consistent snapshot is complete; bring apps back before slow OCI uploads.
+if [ "$apps_stopped" = "1" ]; then
+  echo "$LOG_PREFIX local artifacts ready; restarting apps before OCI upload"
+  restart_apps
+  if [ "$prod_was_running" = "1" ]; then
+    if wait_for_prod_internal 40; then
+      echo "$LOG_PREFIX production internal HTTP check passed"
+    else
+      die "production did not return HTTP 200 after backup restart"
+    fi
+  fi
+fi
 
 NAMESPACE=$(oci_namespace)
 for file in "$BACKUP_DIR"/*; do
