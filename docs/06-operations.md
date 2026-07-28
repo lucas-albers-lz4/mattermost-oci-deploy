@@ -1,3 +1,5 @@
+# 06 - Operations
+
 ## Sync ops scripts from git (day-2)
 
 Do **not** keep a bare `git pull` on the VM as the primary path: the live tree is `/opt/mattermost` (with secrets in `.env`), while checked-in scripts land under `/opt/mattermost/deploy` and are copied into `/opt/mattermost/ops` by bootstrap. Prefer the laptop → rsync → bootstrap flow already used by `deploy-from-zero.sh`.
