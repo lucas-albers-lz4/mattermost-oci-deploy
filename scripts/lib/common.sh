@@ -294,6 +294,7 @@ with_plugin_install_env() {
   _mm_maxfile_default=52428800
   _mm_maxfile_changed=false
 
+  # shellcheck disable=SC2317 # trap handler invoked indirectly on EXIT
   _mm_restore_plugin_install_env() {
     _env_restore_or_unset MM_PLUGINSETTINGS_ENABLEUPLOADS "${_mm_uploads_prev}"
     if [ "${_mm_maxfile_changed}" = "true" ]; then

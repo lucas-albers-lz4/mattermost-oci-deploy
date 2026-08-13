@@ -140,6 +140,7 @@ fi
 
 if [ -f "$APP_DIR/.env" ] && [ -f "$APP_DIR/ops/render-rclone-config.sh" ]; then
   if grep -q '^OBJECT_STORAGE_NAMESPACE=' "$APP_DIR/.env" && grep -q '^COMPARTMENT_OCID=' "$APP_DIR/.env"; then
+    # shellcheck disable=SC2097,SC2098 # env-prefix idiom: pass current APP_DIR to the render script
     APP_DIR="$APP_DIR" "$APP_DIR/ops/render-rclone-config.sh" || true
   fi
 fi

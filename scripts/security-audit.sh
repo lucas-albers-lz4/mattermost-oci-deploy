@@ -148,6 +148,7 @@ host_audit() {
   else
     warn "daily unattended security updates not configured"
   fi
+  # shellcheck disable=SC2016 # literal template placeholder ${distro_codename}, must stay single-quoted (-F grep)
   if [ -f /etc/apt/apt.conf.d/50unattended-upgrades-mattermost ] && grep -qF 'Docker:${distro_codename}' /etc/apt/apt.conf.d/50unattended-upgrades-mattermost; then
     pass "docker origin allowed for unattended-upgrades"
   else
