@@ -4,6 +4,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEPLOY_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+# shellcheck disable=SC2015 # cd && pwd || true: guards the substitution; `true` is a no-op fallback
 PLUGIN_REPO="${PLUGIN_REPO:-$(cd "${DEPLOY_ROOT}/../mattermost-plugin-community-admin" 2>/dev/null && pwd || true)}"
 SRC="${PLUGIN_REPO}/docs/images/community-admin"
 DEST="${DEPLOY_ROOT}/docs/images/community-admin"
